@@ -1,6 +1,7 @@
 {
   "name": "vane",
   "version": "1.12.2",
+  "private": true,
   "license": "MIT",
   "author": "ItzCrazyKns",
   "scripts": {
