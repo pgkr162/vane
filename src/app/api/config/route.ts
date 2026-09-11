@@ -2,6 +2,7 @@ import configManager from '@/lib/config';
 import ModelRegistry from '@/lib/models/registry';
 import { NextRequest, NextResponse } from 'next/server';
 import { ConfigModelProvider } from '@/lib/config/types';
+import { requireVaneAdmin } from '@/lib/mdConnectAdmin';
 
 type SaveConfigBody = {
   key: string;
@@ -9,6 +10,8 @@ type SaveConfigBody = {
 };
 
 export const GET = async (req: NextRequest) => {
+  const denied = await requireVaneAdmin();
+  if (denied) return denied;
   try {
     const values = configManager.getCurrentConfig();
     const fields = configManager.getUIConfigSections();
@@ -43,6 +46,8 @@ export const GET = async (req: NextRequest) => {
 };
 
 export const POST = async (req: NextRequest) => {
+  const denied = await requireVaneAdmin();
+  if (denied) return denied;
   try {
     const body: SaveConfigBody = await req.json();
 

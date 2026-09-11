@@ -1,7 +1,10 @@
 import configManager from '@/lib/config';
 import { NextRequest } from 'next/server';
+import { requireVaneAdmin } from '@/lib/mdConnectAdmin';
 
 export const POST = async (req: NextRequest) => {
+  const denied = await requireVaneAdmin();
+  if (denied) return denied;
   try {
     configManager.markSetupComplete();
 

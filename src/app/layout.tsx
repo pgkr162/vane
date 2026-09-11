@@ -10,6 +10,7 @@ import ThemeProvider from '@/components/theme/Provider';
 import configManager from '@/lib/config';
 import SetupWizard from '@/components/Setup/SetupWizard';
 import { ChatProvider } from '@/lib/hooks/useChat';
+import MdConnectProvider from '@/components/MdConnectProvider';
 
 const montserrat = Montserrat({
   weight: ['300', '400', '500', '700'],
@@ -34,24 +35,26 @@ export default function RootLayout({
   return (
     <html className="h-full" lang="en" suppressHydrationWarning>
       <body className={cn('h-full antialiased', montserrat.className)}>
-        <ThemeProvider>
-          {setupComplete ? (
-            <ChatProvider>
-              <Sidebar>{children}</Sidebar>
-              <Toaster
-                toastOptions={{
-                  unstyled: true,
-                  classNames: {
-                    toast:
-                      'bg-light-secondary dark:bg-dark-secondary dark:text-white/70 text-black-70 rounded-lg p-4 flex flex-row items-center space-x-2',
-                  },
-                }}
-              />
-            </ChatProvider>
-          ) : (
-            <SetupWizard configSections={configSections} />
-          )}
-        </ThemeProvider>
+        <MdConnectProvider>
+          <ThemeProvider>
+            {setupComplete ? (
+              <ChatProvider>
+                <Sidebar>{children}</Sidebar>
+                <Toaster
+                  toastOptions={{
+                    unstyled: true,
+                    classNames: {
+                      toast:
+                        'bg-light-secondary dark:bg-dark-secondary dark:text-white/70 text-black-70 rounded-lg p-4 flex flex-row items-center space-x-2',
+                    },
+                  }}
+                />
+              </ChatProvider>
+            ) : (
+              <SetupWizard configSections={configSections} />
+            )}
+          </ThemeProvider>
+        </MdConnectProvider>
       </body>
     </html>
   );

@@ -20,7 +20,7 @@ import {
   DialogPanel,
   DialogTitle,
 } from '@headlessui/react';
-import SettingsButton from './Settings/SettingsButton';
+import MdConnectChrome from './MdConnectChrome';
 
 const VerticalIconContainer = ({ children }: { children: ReactNode }) => {
   return <div className="flex flex-col items-center w-full">{children}</div>;
@@ -101,7 +101,7 @@ const Sidebar = ({ children }: { children: React.ReactNode }) => {
             ))}
           </VerticalIconContainer>
 
-          <SettingsButton />
+          <MdConnectChrome />
         </div>
       </div>
 
