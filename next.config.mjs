@@ -27,6 +27,11 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_VERSION: pkg.version,
   },
+  experimental: {
+    instantInsights: {
+      validationLevel: 'warning',
+    },
+  },
   turbopack: {
     root: process.cwd(),
   },

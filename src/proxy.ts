@@ -1,5 +1,5 @@
 import { clerkMiddleware } from '@clerk/nextjs/server';
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 
 import { assertMdConnectAccess } from '@/lib/mdConnectAccess';
 
@@ -17,7 +17,7 @@ function authorizedParties() {
     .filter(Boolean);
 }
 
-export default clerkMiddleware(
+const clerk = clerkMiddleware(
   async (auth, req) => {
     if (isPublic(req.nextUrl.pathname)) return NextResponse.next();
 
@@ -44,9 +44,14 @@ export default clerkMiddleware(
   { authorizedParties: authorizedParties() },
 );
 
+export default function proxy(...args: Parameters<typeof clerk>) {
+  const request = args[0] as NextRequest;
+  if (isPublic(request.nextUrl.pathname)) return NextResponse.next();
+  return clerk(...args);
+}
+
 export const config = {
   matcher: [
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    '/(api|trpc)(.*)',
+    '/((?!_next|api/health|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
   ],
 };
