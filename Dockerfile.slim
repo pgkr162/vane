@@ -30,8 +30,11 @@ COPY drizzle ./drizzle
 
 RUN mkdir /home/vane/uploads
 
-RUN yarn add playwright
-RUN yarn playwright install --with-deps --only-shell chromium
+# Copy Playwright from the lockfile install. Do not `yarn add` here: that
+# re-resolves `next` past 16.2.2 and crashes the standalone server.
+COPY --from=builder /home/vane/node_modules/playwright ./node_modules/playwright
+COPY --from=builder /home/vane/node_modules/playwright-core ./node_modules/playwright-core
+RUN node node_modules/playwright/cli.js install --with-deps --only-shell chromium
 
 EXPOSE 3000
 
