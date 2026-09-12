@@ -9,7 +9,7 @@ Upstream Vane has no login. This overlay:
 3. Only active `@medalsports.com` employees with a Vane `launch` or `admin` grant can use the app.
 4. Settings and `/api/config` writes require the `admin` grant.
 
-Auth runs from `src/proxy.ts` (Next.js 16). `/api/health` is public so Railway can probe the container without Clerk keys.
+Auth runs from `src/proxy.ts` (Next.js 16). `/api/health` is public so Railway can probe the container without Clerk keys. The image copies Playwright from the yarn lockfile instead of running `yarn add` at runtime, which was upgrading Next past 16.2.2.
 
 ## Railway
 
