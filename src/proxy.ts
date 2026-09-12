@@ -10,6 +10,17 @@ function isPublic(pathname: string) {
   return pathname === '/api/health' || pathname.startsWith('/__clerk');
 }
 
+function publicOrigin(req: NextRequest) {
+  const configured = process.env.VANE_PUBLIC_URL || process.env.RAILWAY_PUBLIC_DOMAIN;
+  if (configured) {
+    return configured.startsWith('http') ? configured.replace(/\/$/, '') : `https://${configured}`;
+  }
+  const host = req.headers.get('x-forwarded-host');
+  const proto = req.headers.get('x-forwarded-proto') || 'https';
+  if (host) return `${proto}://${host}`;
+  return req.nextUrl.origin;
+}
+
 function authorizedParties() {
   return (process.env.CLERK_AUTHORIZED_PARTIES || 'https://connect.medalsports.us')
     .split(',')
@@ -24,7 +35,7 @@ const clerk = clerkMiddleware(
     const { userId } = await auth();
     if (!userId) {
       const signIn = new URL(SIGN_IN);
-      signIn.searchParams.set('redirect_url', req.nextUrl.origin);
+      signIn.searchParams.set('redirect_url', publicOrigin(req));
       return NextResponse.redirect(signIn);
     }
 
