@@ -29,7 +29,7 @@ const nextConfig = {
   },
   experimental: {
     instantInsights: {
-      validationLevel: 'warning',
+      validationLevel: 'manual-warning',
     },
   },
   turbopack: {
