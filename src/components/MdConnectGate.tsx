@@ -1,13 +1,12 @@
 'use client';
 
-import { useAuth } from '@clerk/nextjs';
 import { useEffect, useState, type ReactNode } from 'react';
 
 const SIGN_IN = 'https://connect.medalsports.us/sign-in';
 const ACCESS_DENIED = 'https://connect.medalsports.us/access-denied?tool=vane';
 
 export default function MdConnectGate({ children }: { children: ReactNode }) {
-  const { isLoaded, userId } = useAuth();
+  const [state, setState] = useState<'wait' | 'guest' | 'ok'>('wait');
   const [signInHref, setSignInHref] = useState(SIGN_IN);
 
   useEffect(() => {
@@ -17,34 +16,33 @@ export default function MdConnectGate({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!isLoaded || !userId) return;
-    fetch('/api/md-connect/me', { cache: 'no-store' })
-      .then((response) => {
-        if (response.status === 403) window.location.replace(ACCESS_DENIED);
+    fetch('/api/md-connect/me', { cache: 'no-store', credentials: 'same-origin' })
+      .then(async (response) => {
+        if (response.status === 403) {
+          window.location.replace(ACCESS_DENIED);
+          return;
+        }
+        if (response.status !== 200) {
+          setState('guest');
+          return;
+        }
+        const data = (await response.json()) as { allowed?: boolean };
+        setState(data.allowed ? 'ok' : 'guest');
       })
-      .catch(() => {});
-  }, [isLoaded, userId]);
+      .catch(() => setState('guest'));
+  }, []);
 
-  if (!isLoaded) {
-    return (
-      <div className="grid h-full place-items-center text-sm text-black/50 dark:text-white/50">
-        Connecting…
-      </div>
-    );
-  }
+  if (state === 'ok') return children;
 
-  if (!userId) {
-    return (
-      <div className="grid h-full place-items-center">
-        <a
-          className="rounded-lg bg-black px-4 py-2 text-sm text-white dark:bg-white dark:text-black"
-          href={signInHref}
-        >
+  return (
+    <div className="grid h-full min-h-screen place-items-center bg-black">
+      {state === 'guest' ? (
+        <a className="rounded-lg bg-white px-4 py-2 text-sm text-black" href={signInHref}>
           Sign in with MD Connect
         </a>
-      </div>
-    );
-  }
-
-  return children;
+      ) : (
+        <p className="text-sm text-white/50">Connecting…</p>
+      )}
+    </div>
+  );
 }
