@@ -20,13 +20,35 @@ function authorizedParties() {
     .filter(Boolean);
 }
 
+function corsPreflight(req: NextRequest) {
+  const origin = req.headers.get('origin') || '';
+  const allowed = new Set([
+    'https://connect.medalsports.us',
+    'https://clerk.connect.medalsports.us',
+    'https://vane.medalsports.us',
+  ]);
+  const headers = new Headers();
+  if (allowed.has(origin)) {
+    headers.set('Access-Control-Allow-Origin', origin);
+    headers.set('Access-Control-Allow-Credentials', 'true');
+    headers.set('Vary', 'Origin');
+  }
+  headers.set('Access-Control-Allow-Methods', 'GET,HEAD,POST,OPTIONS');
+  headers.set(
+    'Access-Control-Allow-Headers',
+    req.headers.get('access-control-request-headers') || 'Content-Type, Authorization',
+  );
+  headers.set('Access-Control-Max-Age', '86400');
+  return new NextResponse(null, { status: 204, headers });
+}
+
 const clerk = clerkMiddleware(
   async (auth, req) => {
     if (isHealth(req.nextUrl.pathname) || isClerkInternal(req.nextUrl.pathname)) {
       return NextResponse.next();
     }
 
-    if (req.method === 'OPTIONS') return NextResponse.next();
+    if (req.method === 'OPTIONS') return corsPreflight(req);
 
     const isApi = req.nextUrl.pathname.startsWith('/api/');
     const { userId } = await auth();
@@ -52,6 +74,7 @@ const clerk = clerkMiddleware(
 export default function proxy(...args: Parameters<typeof clerk>) {
   const request = args[0] as NextRequest;
   if (isHealth(request.nextUrl.pathname)) return NextResponse.next();
+  if (request.method === 'OPTIONS') return corsPreflight(request);
   return clerk(...args);
 }
 
