@@ -9,7 +9,7 @@ Upstream Vane has no login. This overlay:
 3. Only active `@medalsports.com` employees with a Vane `launch` or `admin` grant can use the app.
 4. Settings and `/api/config` writes require the `admin` grant.
 
-Auth runs from `src/proxy.ts` (Next.js 16). HTML pages are allowed through so Clerk can sync the company session on `vane.medalsports.us` without a Safari redirect bounce. APIs still require a Clerk session and an MD Connect Vane grant. `/api/health` is public so Railway can probe the container without Clerk keys. The image copies Playwright from the yarn lockfile instead of running `yarn add` at runtime, which was upgrading Next past 16.2.2.
+Auth runs from `src/proxy.ts` (Next.js 16). HTML pages skip Clerk middleware so Safari never hits a handshake 307. Clerk JS syncs the session on the page, then APIs require a Clerk session and an MD Connect Vane grant. `/api/health` is public so Railway can probe the container without Clerk keys. The image copies Playwright from the yarn lockfile instead of running `yarn add` at runtime, which was upgrading Next past 16.2.2.
 
 ## Railway
 

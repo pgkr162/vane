@@ -3,14 +3,20 @@ import { NextResponse, type NextRequest } from 'next/server';
 
 import { assertMdConnectAccess } from '@/lib/mdConnectAccess';
 
-const ACCESS_DENIED = 'https://connect.medalsports.us/access-denied?tool=vane';
-
 function isHealth(pathname: string) {
   return pathname === '/api/health';
 }
 
 function isClerkInternal(pathname: string) {
   return pathname.startsWith('/__clerk');
+}
+
+function isApi(pathname: string) {
+  return pathname.startsWith('/api/') || pathname.startsWith('/trpc/');
+}
+
+function needsClerk(pathname: string) {
+  return isApi(pathname) || isClerkInternal(pathname);
 }
 
 function authorizedParties() {
@@ -50,11 +56,9 @@ const clerk = clerkMiddleware(
 
     if (req.method === 'OPTIONS') return corsPreflight(req);
 
-    const isApi = req.nextUrl.pathname.startsWith('/api/');
     const { userId } = await auth();
     if (!userId) {
-      if (isApi) return NextResponse.json({ allowed: false }, { status: 401 });
-      return NextResponse.next();
+      return NextResponse.json({ allowed: false }, { status: 401 });
     }
 
     try {
@@ -64,8 +68,7 @@ const clerk = clerkMiddleware(
       requestHeaders.set('x-md-connect-roles', grant.roles.join(','));
       return NextResponse.next({ request: { headers: requestHeaders } });
     } catch {
-      if (isApi) return NextResponse.json({ allowed: false }, { status: 403 });
-      return NextResponse.redirect(ACCESS_DENIED);
+      return NextResponse.json({ allowed: false }, { status: 403 });
     }
   },
   { authorizedParties: authorizedParties() },
@@ -73,8 +76,11 @@ const clerk = clerkMiddleware(
 
 export default function proxy(...args: Parameters<typeof clerk>) {
   const request = args[0] as NextRequest;
-  if (isHealth(request.nextUrl.pathname)) return NextResponse.next();
+  const pathname = request.nextUrl.pathname;
+  if (isHealth(pathname)) return NextResponse.next();
   if (request.method === 'OPTIONS') return corsPreflight(request);
+  // HTML must stay 200. Clerk handshake 307s are what Safari reports as “couldn’t load”.
+  if (!needsClerk(pathname)) return NextResponse.next();
   return clerk(...args);
 }
 
