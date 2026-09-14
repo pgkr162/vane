@@ -33,8 +33,8 @@ export const POST = async (req: Request) => {
 
     const registry = new ModelRegistry();
 
-    const [llm, embeddings] = await Promise.all([
-      registry.loadChatModel(body.chatModel.providerId, body.chatModel.key),
+    const [{ llm, writerLlm }, embeddings] = await Promise.all([
+      registry.resolveSearchLlms(body.optimizationMode, body.chatModel),
       registry.loadEmbeddingModel(
         body.embeddingModel.providerId,
         body.embeddingModel.key,
@@ -56,6 +56,7 @@ export const POST = async (req: Request) => {
       config: {
         embedding: embeddings,
         llm: llm,
+        writerLlm,
         sources: body.sources,
         mode: body.optimizationMode,
         fileIds: [],

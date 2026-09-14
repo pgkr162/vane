@@ -5,7 +5,6 @@ import Sources from './MessageInputActions/Sources';
 import Optimization from './MessageInputActions/Optimization';
 import Attach from './MessageInputActions/Attach';
 import { useChat } from '@/lib/hooks/useChat';
-import ModelSelector from './MessageInputActions/ChatModelSelector';
 import { useI18n } from '@/i18n/provider';
 
 const EmptyChatMessageInput = () => {
@@ -71,7 +70,6 @@ const EmptyChatMessageInput = () => {
           <div className="flex flex-row items-center space-x-2">
             <div className="flex flex-row items-center space-x-1">
               <Sources />
-              <ModelSelector />
               <Attach />
             </div>
             <button

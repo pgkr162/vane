@@ -149,7 +149,8 @@ class SearchAgent {
       input.config.mode,
     );
 
-    const answerStream = input.config.llm.streamText({
+    const writerLlm = input.config.writerLlm ?? input.config.llm;
+    const answerStream = writerLlm.streamText({
       messages: [
         {
           role: 'system',

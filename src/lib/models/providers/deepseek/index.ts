@@ -12,15 +12,10 @@ interface DeepSeekConfig {
 
 const DEEPSEEK_BASE_URL = 'https://api.deepseek.com';
 
-const MODEL_NAMES: Record<string, string> = {
-  'deepseek-flash': 'DeepSeek Flash',
-  'deepseek-v4-pro': 'DeepSeek V4 Pro',
+const DEEPSEEK_CHAT_MODEL: Model = {
+  name: 'DeepSeek Flash',
+  key: 'deepseek-flash',
 };
-
-const FALLBACK_CHAT_MODELS: Model[] = [
-  { name: MODEL_NAMES['deepseek-flash'], key: 'deepseek-flash' },
-  { name: MODEL_NAMES['deepseek-v4-pro'], key: 'deepseek-v4-pro' },
-];
 
 const providerConfigFields: UIConfigField[] = [
   {
@@ -41,55 +36,18 @@ class DeepSeekProvider extends BaseModelProvider<DeepSeekConfig> {
   }
 
   async getDefaultModels(): Promise<ModelList> {
-    try {
-      const res = await fetch(`${DEEPSEEK_BASE_URL}/models`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.config.apiKey}`,
-        },
-      });
-
-      if (!res.ok) {
-        return {
-          embedding: [],
-          chat: FALLBACK_CHAT_MODELS,
-        };
-      }
-
-      const data = await res.json();
-      const chat: Model[] = Array.isArray(data?.data)
-        ? data.data.map((m: { id?: string }) => {
-            const key = String(m.id ?? '');
-            return {
-              key,
-              name: MODEL_NAMES[key] ?? key,
-            };
-          })
-        : FALLBACK_CHAT_MODELS;
-
-      return {
-        embedding: [],
-        chat: chat.filter((m) => m.key),
-      };
-    } catch {
-      return {
-        embedding: [],
-        chat: FALLBACK_CHAT_MODELS,
-      };
-    }
+    return {
+      embedding: [],
+      chat: [DEEPSEEK_CHAT_MODEL],
+    };
   }
 
   async getModelList(): Promise<ModelList> {
-    const defaultModels = await this.getDefaultModels();
     const configProvider = getConfiguredModelProviderById(this.id)!;
 
     return {
-      embedding: [
-        ...defaultModels.embedding,
-        ...configProvider.embeddingModels,
-      ],
-      chat: [...defaultModels.chat, ...configProvider.chatModels],
+      embedding: [...configProvider.embeddingModels],
+      chat: [DEEPSEEK_CHAT_MODEL],
     };
   }
 

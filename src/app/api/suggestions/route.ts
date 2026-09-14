@@ -13,10 +13,7 @@ export const POST = async (req: Request) => {
 
     const registry = new ModelRegistry();
 
-    const llm = await registry.loadChatModel(
-      body.chatModel.providerId,
-      body.chatModel.key,
-    );
+    const llm = await registry.resolveUtilityLlm(body.chatModel);
 
     const suggestions = await generateSuggestions(
       {

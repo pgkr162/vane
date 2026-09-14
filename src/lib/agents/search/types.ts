@@ -10,6 +10,7 @@ export type SearchAgentConfig = {
   sources: SearchSources[];
   fileIds: string[];
   llm: BaseLLM<any>;
+  writerLlm?: BaseLLM<any>;
   embedding: BaseEmbedding<any>;
   mode: 'speed' | 'balanced' | 'quality';
   systemInstructions: string;
