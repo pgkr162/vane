@@ -4,8 +4,7 @@ import { useEffect, useState } from 'react';
 
 import SettingsButton from './Settings/SettingsButton';
 import LanguageSwitcher from './LanguageSwitcher';
-
-const HOME = 'https://connect.medalsports.us/home';
+import BackToConnect from './BackToConnect';
 
 export default function MdConnectChrome() {
   const [canConfigure, setCanConfigure] = useState(false);
@@ -19,14 +18,9 @@ export default function MdConnectChrome() {
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <LanguageSwitcher compact />
+      <LanguageSwitcher placement="sidebar" />
       {canConfigure ? <SettingsButton /> : null}
-      <a
-        href={HOME}
-        className="text-[10px] text-black/60 dark:text-white/60 hover:opacity-70"
-      >
-        MD Connect
-      </a>
+      <BackToConnect />
     </div>
   );
 }

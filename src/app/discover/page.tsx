@@ -7,7 +7,6 @@ import { cn } from '@/lib/utils';
 import SmallNewsCard from '@/components/Discover/SmallNewsCard';
 import MajorNewsCard from '@/components/Discover/MajorNewsCard';
 import { useI18n } from '@/i18n/provider';
-import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 export interface Discover {
   title: string;
@@ -76,7 +75,6 @@ const Page = () => {
               </h1>
             </div>
             <div className="flex flex-row items-center justify-center lg:justify-end gap-3 overflow-x-auto">
-              <LanguageSwitcher />
               {topics.map((topic, i) => (
                 <div
                   key={i}
