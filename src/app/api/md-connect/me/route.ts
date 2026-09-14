@@ -18,6 +18,7 @@ export const GET = async () => {
         allowed: canLaunchVane(cookieGrant.roles),
         canConfigure: canConfigureVane(cookieGrant.roles),
         roles: cookieGrant.roles,
+        sub: cookieGrant.sub,
       },
       { headers: { 'Cache-Control': 'private, no-store' } },
     );
@@ -32,6 +33,7 @@ export const GET = async () => {
         allowed: canLaunchVane(grant.roles),
         canConfigure: canConfigureVane(grant.roles),
         roles: grant.roles,
+        sub: grant.sub,
       },
       { headers: { 'Cache-Control': 'private, no-store' } },
     );

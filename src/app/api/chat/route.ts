@@ -9,6 +9,9 @@ import db from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import { chats } from '@/lib/db/schema';
 import UploadManager from '@/lib/uploads/manager';
+import { getVaneActor } from '@/lib/vaneActor';
+import { runWithUsageContext } from '@/lib/usage/context';
+import { QuotaExceededError, assertQuota } from '@/lib/usage/store';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -101,6 +104,38 @@ const ensureChatExists = async (input: {
 };
 
 export const POST = async (req: Request) => {
+  try {
+    const actor = await getVaneActor();
+    if (!actor) {
+      return Response.json({ message: 'Unauthorized.' }, { status: 401 });
+    }
+    try {
+      await assertQuota(actor.sub);
+    } catch (err) {
+      if (err instanceof QuotaExceededError) {
+        return Response.json(
+          {
+            message: 'TOKEN_QUOTA_EXCEEDED',
+            used: err.used,
+            limit: err.limit,
+          },
+          { status: 429 },
+        );
+      }
+      throw err;
+    }
+
+    return runWithUsageContext(actor.sub, () => handleChat(req));
+  } catch (err) {
+    console.error('An error occurred while processing chat request:', err);
+    return Response.json(
+      { message: 'An error occurred while processing chat request' },
+      { status: 500 },
+    );
+  }
+};
+
+const handleChat = async (req: Request) => {
   try {
     const reqBody = (await req.json()) as Body;
 

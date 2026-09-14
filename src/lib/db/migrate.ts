@@ -7,7 +7,10 @@ const dbPath = path.join(DATA_DIR, './data/db.sqlite');
 
 const db = new Database(dbPath);
 
-const migrationsFolder = path.join(DATA_DIR, 'drizzle');
+const bundledMigrations = path.join(process.cwd(), 'drizzle');
+const migrationsFolder = fs.existsSync(bundledMigrations)
+  ? bundledMigrations
+  : path.join(DATA_DIR, 'drizzle');
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS ran_migrations (
@@ -286,3 +289,23 @@ fs.readdirSync(migrationsFolder)
       throw err;
     }
   });
+
+db.exec(`
+  CREATE TABLE IF NOT EXISTS usage_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+    userId TEXT NOT NULL,
+    model TEXT NOT NULL,
+    promptTokens INTEGER NOT NULL DEFAULT 0,
+    completionTokens INTEGER NOT NULL DEFAULT 0,
+    totalTokens INTEGER NOT NULL DEFAULT 0,
+    estimatedCents INTEGER NOT NULL DEFAULT 0,
+    createdAt TEXT NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS usage_events_user_created ON usage_events (userId, createdAt);
+  CREATE TABLE IF NOT EXISTS usage_quotas (
+    userId TEXT PRIMARY KEY NOT NULL,
+    monthlyTokenLimit INTEGER NOT NULL DEFAULT 2000000,
+    enforce INTEGER NOT NULL DEFAULT 1,
+    updatedAt TEXT NOT NULL
+  );
+`);

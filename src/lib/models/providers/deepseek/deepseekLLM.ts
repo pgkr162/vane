@@ -25,6 +25,8 @@ class DeepSeekLLM extends OpenAILLM {
       throw new Error('No response from DeepSeek');
     }
 
+    this.noteUsage(response.usage);
+
     try {
       return input.schema.parse(
         JSON.parse(

@@ -4,6 +4,9 @@ import SessionManager from '@/lib/session';
 import { ChatTurnMessage } from '@/lib/types';
 import { SearchSources } from '@/lib/agents/search/types';
 import APISearchAgent from '@/lib/agents/search/api';
+import { getVaneActor } from '@/lib/vaneActor';
+import { runWithUsageContext } from '@/lib/usage/context';
+import { QuotaExceededError, assertQuota } from '@/lib/usage/store';
 
 interface ChatRequestBody {
   optimizationMode: 'speed' | 'balanced' | 'quality';
@@ -18,6 +21,26 @@ interface ChatRequestBody {
 
 export const POST = async (req: Request) => {
   try {
+    const actor = await getVaneActor();
+    if (!actor) {
+      return Response.json({ message: 'Unauthorized.' }, { status: 401 });
+    }
+    try {
+      await assertQuota(actor.sub);
+    } catch (err) {
+      if (err instanceof QuotaExceededError) {
+        return Response.json(
+          {
+            message: 'TOKEN_QUOTA_EXCEEDED',
+            used: err.used,
+            limit: err.limit,
+          },
+          { status: 429 },
+        );
+      }
+      throw err;
+    }
+
     const body: ChatRequestBody = await req.json();
 
     if (!body.sources || !body.query) {
@@ -51,20 +74,22 @@ export const POST = async (req: Request) => {
 
     const agent = new APISearchAgent();
 
-    agent.searchAsync(session, {
-      chatHistory: history,
-      config: {
-        embedding: embeddings,
-        llm: llm,
-        writerLlm,
-        sources: body.sources,
-        mode: body.optimizationMode,
-        fileIds: [],
-        systemInstructions: body.systemInstructions || '',
-      },
-      followUp: body.query,
-      chatId: crypto.randomUUID(),
-      messageId: crypto.randomUUID(),
+    runWithUsageContext(actor.sub, () => {
+      agent.searchAsync(session, {
+        chatHistory: history,
+        config: {
+          embedding: embeddings,
+          llm: llm,
+          writerLlm,
+          sources: body.sources,
+          mode: body.optimizationMode,
+          fileIds: [],
+          systemInstructions: body.systemInstructions || '',
+        },
+        followUp: body.query,
+        chatId: crypto.randomUUID(),
+        messageId: crypto.randomUUID(),
+      });
     });
 
     if (!body.stream) {

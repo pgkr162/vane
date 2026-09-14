@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import SettingsButton from './Settings/SettingsButton';
 import LanguageSwitcher from './LanguageSwitcher';
 import BackToConnect from './BackToConnect';
+import UsageMeter from './UsageMeter';
 
 export default function MdConnectChrome() {
   const [canConfigure, setCanConfigure] = useState(false);
@@ -19,6 +20,7 @@ export default function MdConnectChrome() {
   return (
     <div className="flex flex-col items-center gap-3">
       <LanguageSwitcher placement="sidebar" />
+      <UsageMeter placement="sidebar" />
       {canConfigure ? <SettingsButton /> : null}
       <BackToConnect />
     </div>
