@@ -17,6 +17,11 @@ import {
   ChatCompletionTool,
   ChatCompletionToolMessageParam,
 } from 'openai/resources/index.mjs';
+import type {
+  FunctionTool,
+  ResponseFunctionToolCall,
+  ResponseInputItem,
+} from 'openai/resources/responses/responses';
 import { Message } from '@/lib/types';
 import { repairJson } from '@toolsycc/json-repair';
 
@@ -70,11 +75,15 @@ class OpenAILLM extends BaseLLM<OpenAIConfig> {
   }
 
   async generateText(input: GenerateTextInput): Promise<GenerateTextOutput> {
+    if (usesResponsesForTools(this.config.model, input.tools)) {
+      return this.generateTextViaResponses(input);
+    }
+
     const openaiTools = toOpenAITools(input.tools);
 
     const response = await this.openAIClient.chat.completions.create({
       model: this.config.model,
-      ...toolCallParams(this.config.model, openaiTools),
+      tools: openaiTools.length > 0 ? openaiTools : undefined,
       messages: this.convertToOpenAIMessages(input.messages),
       temperature:
         input.options?.temperature ?? this.config.options?.temperature ?? 1.0,
@@ -113,15 +122,50 @@ class OpenAILLM extends BaseLLM<OpenAIConfig> {
     throw new Error('No response from OpenAI');
   }
 
+  private async generateTextViaResponses(
+    input: GenerateTextInput,
+  ): Promise<GenerateTextOutput> {
+    const response = await this.openAIClient.responses.create({
+      model: this.config.model,
+      input: toResponseInput(input.messages),
+      tools: toResponseTools(input.tools),
+      reasoning: reasoningConfig(this.config.model),
+      max_output_tokens:
+        input.options?.maxTokens ?? this.config.options?.maxTokens,
+    });
+
+    return {
+      content: response.output_text ?? '',
+      toolCalls: response.output
+        .filter(
+          (item): item is ResponseFunctionToolCall =>
+            item.type === 'function_call',
+        )
+        .map((item) => ({
+          id: item.call_id,
+          name: item.name,
+          arguments: JSON.parse(item.arguments || '{}'),
+        })),
+      additionalInfo: {
+        finishReason: response.status,
+      },
+    };
+  }
+
   async *streamText(
     input: GenerateTextInput,
   ): AsyncGenerator<StreamTextOutput> {
+    if (usesResponsesForTools(this.config.model, input.tools)) {
+      yield* this.streamTextViaResponses(input);
+      return;
+    }
+
     const openaiTools = toOpenAITools(input.tools);
 
     const stream = await this.openAIClient.chat.completions.create({
       model: this.config.model,
       messages: this.convertToOpenAIMessages(input.messages),
-      ...toolCallParams(this.config.model, openaiTools),
+      tools: openaiTools.length > 0 ? openaiTools : undefined,
       temperature:
         input.options?.temperature ?? this.config.options?.temperature ?? 1.0,
       top_p: input.options?.topP ?? this.config.options?.topP,
@@ -166,6 +210,107 @@ class OpenAILLM extends BaseLLM<OpenAIConfig> {
           done: chunk.choices[0].finish_reason !== null,
           additionalInfo: {
             finishReason: chunk.choices[0].finish_reason,
+          },
+        };
+      }
+    }
+  }
+
+  private async *streamTextViaResponses(
+    input: GenerateTextInput,
+  ): AsyncGenerator<StreamTextOutput> {
+    const stream = this.openAIClient.responses.stream({
+      model: this.config.model,
+      input: toResponseInput(input.messages),
+      tools: toResponseTools(input.tools),
+      reasoning: reasoningConfig(this.config.model),
+      max_output_tokens:
+        input.options?.maxTokens ?? this.config.options?.maxTokens,
+    });
+
+    const toolCalls = new Map<
+      string,
+      { name: string; id: string; arguments: string }
+    >();
+
+    for await (const event of stream) {
+      if (event.type === 'response.failed') {
+        throw new Error(
+          event.response.error?.message ?? 'OpenAI response failed',
+        );
+      }
+
+      if (event.type === 'response.output_text.delta' && event.delta) {
+        yield {
+          contentChunk: event.delta,
+          toolCallChunk: [],
+          done: false,
+        };
+        continue;
+      }
+
+      if (
+        event.type === 'response.output_item.added' &&
+        event.item.type === 'function_call'
+      ) {
+        toolCalls.set(event.item.id ?? event.item.call_id, {
+          name: event.item.name,
+          id: event.item.call_id,
+          arguments: event.item.arguments || '',
+        });
+        continue;
+      }
+
+      if (event.type === 'response.function_call_arguments.delta') {
+        const existing = toolCalls.get(event.item_id);
+        if (!existing) {
+          continue;
+        }
+
+        existing.arguments += event.delta;
+        yield {
+          contentChunk: '',
+          toolCallChunk: [
+            {
+              name: existing.name,
+              id: existing.id,
+              arguments: parse(existing.arguments || '{}'),
+            },
+          ],
+          done: false,
+        };
+        continue;
+      }
+
+      if (event.type === 'response.function_call_arguments.done') {
+        const existing = toolCalls.get(event.item_id);
+        const call = existing ?? {
+          name: event.name,
+          id: event.item_id,
+          arguments: event.arguments,
+        };
+        call.arguments = event.arguments;
+        yield {
+          contentChunk: '',
+          toolCallChunk: [
+            {
+              name: call.name,
+              id: call.id,
+              arguments: parse(call.arguments || '{}'),
+            },
+          ],
+          done: false,
+        };
+        continue;
+      }
+
+      if (event.type === 'response.completed') {
+        yield {
+          contentChunk: '',
+          toolCallChunk: [],
+          done: true,
+          additionalInfo: {
+            finishReason: event.response.status,
           },
         };
       }
@@ -265,20 +410,76 @@ function toOpenAITools(
   );
 }
 
-function toolCallParams(model: string, tools: ChatCompletionTool[]) {
-  if (tools.length === 0) {
-    return {};
+function isReasoningModel(model: string) {
+  return /gpt-5|o[1-4]|luna/i.test(model);
+}
+
+function usesResponsesForTools(
+  model: string,
+  tools: GenerateTextInput['tools'],
+) {
+  return Boolean(tools?.length) && isReasoningModel(model);
+}
+
+function reasoningConfig(model: string) {
+  if (/gpt-5(?:\.\d+)?-pro/i.test(model)) {
+    return { effort: 'high' as const, summary: 'auto' as const };
   }
 
-  // gpt-5.6-luna and similar reasoning models reject function tools on Chat
-  // Completions unless reasoning_effort is none. Vane's researcher still
-  // reasons via the __reasoning_preamble tool.
-  return {
-    tools,
-    ...(/gpt-5|o[1-4]|luna/i.test(model)
-      ? { reasoning_effort: 'none' as const }
-      : {}),
-  };
+  return { effort: 'medium' as const, summary: 'auto' as const };
+}
+
+function toResponseTools(tools: GenerateTextInput['tools']): FunctionTool[] {
+  return (
+    tools?.map((tool) => ({
+      type: 'function' as const,
+      name: tool.name,
+      description: tool.description,
+      parameters: z.toJSONSchema(tool.schema) as Record<string, unknown>,
+      strict: false,
+    })) ?? []
+  );
+}
+
+function toResponseInput(messages: Message[]): ResponseInputItem[] {
+  const items: ResponseInputItem[] = [];
+
+  for (const msg of messages) {
+    if (msg.role === 'system' || msg.role === 'user') {
+      items.push({
+        role: msg.role,
+        content: msg.content,
+      });
+      continue;
+    }
+
+    if (msg.role === 'assistant') {
+      if (msg.content) {
+        items.push({
+          role: 'assistant',
+          content: msg.content,
+        });
+      }
+
+      for (const toolCall of msg.tool_calls ?? []) {
+        items.push({
+          type: 'function_call',
+          call_id: toolCall.id,
+          name: toolCall.name,
+          arguments: JSON.stringify(toolCall.arguments ?? {}),
+        });
+      }
+      continue;
+    }
+
+    items.push({
+      type: 'function_call_output',
+      call_id: msg.id,
+      output: msg.content,
+    });
+  }
+
+  return items;
 }
 
 export default OpenAILLM;
