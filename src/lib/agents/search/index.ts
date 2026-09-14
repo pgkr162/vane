@@ -12,6 +12,30 @@ import { getTokenCount } from '@/lib/utils/splitText';
 
 class SearchAgent {
   async searchAsync(session: SessionManager, input: SearchAgentInput) {
+    try {
+      await this.runSearch(session, input);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : 'Search failed unexpectedly';
+      console.error('Search failed:', message);
+      session.emit('error', { data: message });
+      await db
+        .update(messages)
+        .set({
+          status: 'error',
+          responseBlocks: session.getAllBlocks(),
+        })
+        .where(
+          and(
+            eq(messages.chatId, input.chatId),
+            eq(messages.messageId, input.messageId),
+          ),
+        )
+        .execute();
+    }
+  }
+
+  private async runSearch(session: SessionManager, input: SearchAgentInput) {
     const exists = await db.query.messages.findFirst({
       where: and(
         eq(messages.chatId, input.chatId),

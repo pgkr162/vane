@@ -70,22 +70,11 @@ class OpenAILLM extends BaseLLM<OpenAIConfig> {
   }
 
   async generateText(input: GenerateTextInput): Promise<GenerateTextOutput> {
-    const openaiTools: ChatCompletionTool[] = [];
-
-    input.tools?.forEach((tool) => {
-      openaiTools.push({
-        type: 'function',
-        function: {
-          name: tool.name,
-          description: tool.description,
-          parameters: z.toJSONSchema(tool.schema),
-        },
-      });
-    });
+    const openaiTools = toOpenAITools(input.tools);
 
     const response = await this.openAIClient.chat.completions.create({
       model: this.config.model,
-      tools: openaiTools.length > 0 ? openaiTools : undefined,
+      ...toolCallParams(this.config.model, openaiTools),
       messages: this.convertToOpenAIMessages(input.messages),
       temperature:
         input.options?.temperature ?? this.config.options?.temperature ?? 1.0,
@@ -127,23 +116,12 @@ class OpenAILLM extends BaseLLM<OpenAIConfig> {
   async *streamText(
     input: GenerateTextInput,
   ): AsyncGenerator<StreamTextOutput> {
-    const openaiTools: ChatCompletionTool[] = [];
-
-    input.tools?.forEach((tool) => {
-      openaiTools.push({
-        type: 'function',
-        function: {
-          name: tool.name,
-          description: tool.description,
-          parameters: z.toJSONSchema(tool.schema),
-        },
-      });
-    });
+    const openaiTools = toOpenAITools(input.tools);
 
     const stream = await this.openAIClient.chat.completions.create({
       model: this.config.model,
       messages: this.convertToOpenAIMessages(input.messages),
-      tools: openaiTools.length > 0 ? openaiTools : undefined,
+      ...toolCallParams(this.config.model, openaiTools),
       temperature:
         input.options?.temperature ?? this.config.options?.temperature ?? 1.0,
       top_p: input.options?.topP ?? this.config.options?.topP,
@@ -270,6 +248,37 @@ class OpenAILLM extends BaseLLM<OpenAIConfig> {
       }
     }
   }
+}
+
+function toOpenAITools(
+  tools: GenerateTextInput['tools'],
+): ChatCompletionTool[] {
+  return (
+    tools?.map((tool) => ({
+      type: 'function' as const,
+      function: {
+        name: tool.name,
+        description: tool.description,
+        parameters: z.toJSONSchema(tool.schema),
+      },
+    })) ?? []
+  );
+}
+
+function toolCallParams(model: string, tools: ChatCompletionTool[]) {
+  if (tools.length === 0) {
+    return {};
+  }
+
+  // gpt-5.6-luna and similar reasoning models reject function tools on Chat
+  // Completions unless reasoning_effort is none. Vane's researcher still
+  // reasons via the __reasoning_preamble tool.
+  return {
+    tools,
+    ...(/gpt-5|o[1-4]|luna/i.test(model)
+      ? { reasoning_effort: 'none' as const }
+      : {}),
+  };
 }
 
 export default OpenAILLM;
