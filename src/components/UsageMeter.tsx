@@ -6,15 +6,15 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/i18n/provider';
-import { formatTokens, formatUsdFromCents } from '@/lib/usage/format';
+import { formatTokens } from '@/lib/usage/format';
 
 type UsageSummary = {
   usedTokens: number;
-  monthlyTokenLimit: number;
+  monthlyTokenLimit: number | null;
   remainingTokens: number | null;
-  estimatedCents: number;
   enforce: boolean;
   blocked: boolean;
+  helpUrl?: string;
 };
 
 export default function UsageMeter({
@@ -39,15 +39,15 @@ export default function UsageMeter({
 
   if (!usage) return null;
 
-  const unlimited = usage.monthlyTokenLimit === 0;
+  const unlimited = usage.monthlyTokenLimit == null;
   const ratio = unlimited
     ? 0
-    : Math.min(1, usage.usedTokens / Math.max(usage.monthlyTokenLimit, 1));
+    : Math.min(1, usage.usedTokens / Math.max(usage.monthlyTokenLimit ?? 1, 1));
   const remainingLabel = unlimited
     ? t('quotaUnlimited')
     : t('quotaRemaining', {
         remaining: formatTokens(usage.remainingTokens ?? 0),
-        limit: formatTokens(usage.monthlyTokenLimit),
+        limit: formatTokens(usage.monthlyTokenLimit ?? 0),
       });
 
   return (
@@ -97,11 +97,20 @@ export default function UsageMeter({
                     {remainingLabel}
                   </p>
                   <p className="mt-1 text-xs text-black/60 dark:text-white/60">
-                    {t('quotaUsedEstimate', {
+                    {t('quotaUsedThisMonth', {
                       used: formatTokens(usage.usedTokens),
-                      cost: formatUsdFromCents(usage.estimatedCents),
                     })}
                   </p>
+                  {usage.helpUrl ? (
+                    <a
+                      href={usage.helpUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-2 inline-block text-xs text-sky-600 dark:text-sky-400"
+                    >
+                      {t('quotaOpenConnect')}
+                    </a>
+                  ) : null}
                   {!unlimited && (
                     <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-light-200 dark:bg-dark-200">
                       <div

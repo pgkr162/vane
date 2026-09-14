@@ -9,9 +9,15 @@ import db from '@/lib/db';
 import { eq } from 'drizzle-orm';
 import { chats } from '@/lib/db/schema';
 import UploadManager from '@/lib/uploads/manager';
-import { getVaneActor } from '@/lib/vaneActor';
+import { getVaneActor, type VaneActor } from '@/lib/vaneActor';
 import { runWithUsageContext } from '@/lib/usage/context';
-import { QuotaExceededError, assertQuota } from '@/lib/usage/store';
+import {
+  TokenQuotaExceededError,
+  estimateSearchTokens,
+  reserveUsage,
+  settleUsage,
+  tokenQuotaResponse,
+} from '@/lib/mdConnectUsage';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -109,24 +115,11 @@ export const POST = async (req: Request) => {
     if (!actor) {
       return Response.json({ message: 'Unauthorized.' }, { status: 401 });
     }
-    try {
-      await assertQuota(actor.sub);
-    } catch (err) {
-      if (err instanceof QuotaExceededError) {
-        return Response.json(
-          {
-            message: 'TOKEN_QUOTA_EXCEEDED',
-            used: err.used,
-            limit: err.limit,
-          },
-          { status: 429 },
-        );
-      }
-      throw err;
-    }
-
-    return runWithUsageContext(actor.sub, () => handleChat(req));
+    return await handleChat(req, actor);
   } catch (err) {
+    if (err instanceof TokenQuotaExceededError) {
+      return tokenQuotaResponse(err);
+    }
     console.error('An error occurred while processing chat request:', err);
     return Response.json(
       { message: 'An error occurred while processing chat request' },
@@ -135,7 +128,7 @@ export const POST = async (req: Request) => {
   }
 };
 
-const handleChat = async (req: Request) => {
+const handleChat = async (req: Request, actor: VaneActor) => {
   try {
     const reqBody = (await req.json()) as Body;
 
@@ -184,12 +177,35 @@ const handleChat = async (req: Request) => {
       }
     });
 
+    const nonce = crypto.randomUUID();
+    const sink = { promptTokens: 0, completionTokens: 0 };
+    await reserveUsage({
+      sub: actor.sub,
+      nonce,
+      estimatedTokens: estimateSearchTokens(body.optimizationMode),
+      model: body.chatModel.key,
+    });
+
     const agent = new SearchAgent();
     const session = SessionManager.createSession();
 
     const responseStream = new TransformStream();
     const writer = responseStream.writable.getWriter();
     const encoder = new TextEncoder();
+    let settled = false;
+    const settle = (
+      outcome: 'success' | 'cancelled' | 'provider_unavailable',
+    ) => {
+      if (settled) return;
+      settled = true;
+      void settleUsage({
+        sub: actor.sub,
+        nonce,
+        outcome,
+        promptTokens: sink.promptTokens,
+        completionTokens: sink.completionTokens,
+      });
+    };
 
     const disconnect = session.subscribe((event: string, data: any) => {
       if (event === 'data') {
@@ -222,6 +238,7 @@ const handleChat = async (req: Request) => {
           );
         }
       } else if (event === 'end') {
+        settle('success');
         writer.write(
           encoder.encode(
             JSON.stringify({
@@ -232,6 +249,7 @@ const handleChat = async (req: Request) => {
         writer.close();
         session.removeAllListeners();
       } else if (event === 'error') {
+        settle('provider_unavailable');
         writer.write(
           encoder.encode(
             JSON.stringify({
@@ -245,20 +263,22 @@ const handleChat = async (req: Request) => {
       }
     });
 
-    agent.searchAsync(session, {
-      chatHistory: history,
-      followUp: message.content,
-      chatId: body.message.chatId,
-      messageId: body.message.messageId,
-      config: {
-        llm,
-        writerLlm,
-        embedding: embedding,
-        sources: body.sources as SearchSources[],
-        mode: body.optimizationMode,
-        fileIds: body.files,
-        systemInstructions: body.systemInstructions || 'None',
-      },
+    runWithUsageContext({ userId: actor.sub, nonce, sink }, () => {
+      agent.searchAsync(session, {
+        chatHistory: history,
+        followUp: message.content,
+        chatId: body.message.chatId,
+        messageId: body.message.messageId,
+        config: {
+          llm,
+          writerLlm,
+          embedding: embedding,
+          sources: body.sources as SearchSources[],
+          mode: body.optimizationMode,
+          fileIds: body.files,
+          systemInstructions: body.systemInstructions || 'None',
+        },
+      });
     });
 
     ensureChatExists({
@@ -269,6 +289,7 @@ const handleChat = async (req: Request) => {
     });
 
     req.signal.addEventListener('abort', () => {
+      settle('cancelled');
       disconnect();
       writer.close();
     });
@@ -281,6 +302,7 @@ const handleChat = async (req: Request) => {
       },
     });
   } catch (err) {
+    if (err instanceof TokenQuotaExceededError) throw err;
     console.error('An error occurred while processing chat request:', err);
     return Response.json(
       { message: 'An error occurred while processing chat request' },
