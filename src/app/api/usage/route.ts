@@ -32,6 +32,11 @@ export const GET = async () => {
           : Math.min(employeeLimit, appLimit);
     const usedTokens = vaneApp ? appUsed : balance.committed;
 
+    const departmentRemaining =
+      balance.department_limit == null
+        ? null
+        : Math.max(0, balance.department_limit - balance.department_used);
+
     return Response.json(
       {
         period: balance.period,
@@ -41,6 +46,7 @@ export const GET = async () => {
         estimatedCents: 0,
         monthlyTokenLimit,
         remainingTokens,
+        remaining: remainingTokens,
         bonus: balance.bonus,
         held: vaneApp?.held ?? balance.held,
         appLimit,
@@ -50,6 +56,10 @@ export const GET = async () => {
           (appRemaining === 0 && appLimit != null),
         byModel: [],
         helpUrl: balance.help_url,
+        help_url: balance.help_url,
+        resetAt: balance.reset_at,
+        departmentRemaining,
+        by_app: balance.by_app,
         managedByConnect: true,
         canConfigure: actor.canConfigure,
       },

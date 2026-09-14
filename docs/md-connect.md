@@ -19,7 +19,7 @@ Vane does not keep a separate monthly quota. Each search reserves against the MD
 - `POST /api/integrations/ai/usage/complete`
 - `POST /api/integrations/ai/usage/balance`
 
-The older `/api/integrations/vane/usage/*` aliases still work. Employees view remaining tokens at `https://connect.medalsports.us/ai/usage`. Admins set the employee total and optional per-app caps at `/admin/ai`. Missing policy rows mean unlimited; `0` blocks.
+The older `/api/integrations/vane/usage/*` aliases on Connect still exist, but Vane calls `/api/integrations/ai/usage` only. Employees view remaining tokens at `https://connect.medalsports.us/ai/usage`. Admins set the employee total and optional per-app caps at `/admin/ai`. Missing policy rows mean unlimited; `0` blocks.
 
 ## Railway
 

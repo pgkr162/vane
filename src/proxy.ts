@@ -2,6 +2,7 @@ import { clerkMiddleware } from '@clerk/nextjs/server';
 import { NextResponse, type NextRequest } from 'next/server';
 
 import { assertMdConnectAccess } from '@/lib/mdConnectAccess';
+import { mdConnectIntegrationSecret } from '@/lib/mdConnectSecret';
 import {
   mintVaneLaunchToken,
   readVaneLaunchToken,
@@ -29,7 +30,7 @@ function needsClerk(pathname: string) {
 }
 
 function secret() {
-  return process.env.MD_CONNECT_INTEGRATION_SECRET || '';
+  return mdConnectIntegrationSecret();
 }
 
 function authorizedParties() {

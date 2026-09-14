@@ -2,12 +2,13 @@ import { cookies } from 'next/headers';
 import { auth } from '@clerk/nextjs/server';
 
 import { assertMdConnectAccess, canConfigureVane, canLaunchVane } from '@/lib/mdConnectAccess';
+import { mdConnectIntegrationSecret } from '@/lib/mdConnectSecret';
 import { readVaneLaunchToken } from '@/lib/vaneGrant';
 
 async function grantFromCookie() {
   const token = (await cookies()).get('vane_grant')?.value;
   if (!token) return null;
-  return readVaneLaunchToken(process.env.MD_CONNECT_INTEGRATION_SECRET || '', token);
+  return readVaneLaunchToken(mdConnectIntegrationSecret(), token);
 }
 
 export const GET = async () => {

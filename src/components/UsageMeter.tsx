@@ -12,10 +12,14 @@ type UsageSummary = {
   usedTokens: number;
   monthlyTokenLimit: number | null;
   remainingTokens: number | null;
+  remaining?: number | null;
   enforce: boolean;
   blocked: boolean;
+  held?: number;
   helpUrl?: string;
+  help_url?: string;
   appLimit?: number | null;
+  by_app?: { client_id: string; name: string; committed: number; held: number; monthly_tokens: number | null }[];
 };
 
 export default function UsageMeter({
@@ -44,10 +48,11 @@ export default function UsageMeter({
   const ratio = unlimited
     ? 0
     : Math.min(1, usage.usedTokens / Math.max(usage.monthlyTokenLimit ?? 1, 1));
+  const remaining = usage.remainingTokens ?? usage.remaining ?? 0;
   const remainingLabel = unlimited
     ? t('quotaUnlimited')
     : t('quotaRemaining', {
-        remaining: formatTokens(usage.remainingTokens ?? 0),
+        remaining: formatTokens(remaining),
         limit: formatTokens(usage.monthlyTokenLimit ?? 0),
       });
 
@@ -107,9 +112,19 @@ export default function UsageMeter({
                       {t('quotaAppCap', { limit: formatTokens(usage.appLimit) })}
                     </p>
                   ) : null}
-                  {usage.helpUrl ? (
+                  {Number(usage.held) > 0 ? (
+                    <p className="mt-1 text-xs text-black/60 dark:text-white/60">
+                      {t('quotaHeld', { held: formatTokens(usage.held ?? 0) })}
+                    </p>
+                  ) : null}
+                  {usage.by_app?.filter((app) => app.client_id && app.client_id !== 'vane.search').map((app) => (
+                    <p key={app.client_id} className="mt-1 text-xs text-black/60 dark:text-white/60">
+                      {app.name}: {app.monthly_tokens == null ? t('quotaUnlimited') : formatTokens(Math.max(0, app.monthly_tokens - app.committed))}
+                    </p>
+                  ))}
+                  {usage.helpUrl || usage.help_url ? (
                     <a
-                      href={usage.helpUrl}
+                      href={usage.helpUrl || usage.help_url}
                       target="_blank"
                       rel="noreferrer"
                       className="mt-2 inline-block text-xs text-sky-600 dark:text-sky-400"
