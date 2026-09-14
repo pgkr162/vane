@@ -12,6 +12,7 @@ type UsagePayload = {
   remainingTokens: number | null;
   helpUrl: string;
   managedByConnect?: boolean;
+  appLimit?: number | null;
 };
 
 const UsageSection = () => {
@@ -56,6 +57,11 @@ const UsageSection = () => {
         <p className="mt-1 text-sm text-black/60 dark:text-white/60">
           {t('quotaUsedThisMonth', { used: formatTokens(usage.usedTokens) })}
         </p>
+        {usage.appLimit != null ? (
+          <p className="mt-1 text-sm text-black/60 dark:text-white/60">
+            {t('quotaAppCap', { limit: formatTokens(usage.appLimit) })}
+          </p>
+        ) : null}
       </div>
 
       <div className="rounded-xl border border-light-200 bg-light-primary/80 p-4 dark:border-dark-200 dark:bg-dark-primary/80">
