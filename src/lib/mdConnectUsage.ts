@@ -1,7 +1,8 @@
 const ISSUER = process.env.MD_CONNECT_ISSUER ?? 'https://clerk.connect.medalsports.us';
-const USAGE_BASE =
-  process.env.MD_CONNECT_USAGE_URL ??
-  'https://connect.medalsports.us/api/integrations/vane/usage';
+const DEFAULT_USAGE_BASE = 'https://connect.medalsports.us/api/integrations/ai/usage';
+const LEGACY_USAGE_BASE = 'https://connect.medalsports.us/api/integrations/vane/usage';
+const USAGE_BASE = process.env.MD_CONNECT_USAGE_URL ?? DEFAULT_USAGE_BASE;
+const APP = 'vane.search';
 export const MD_CONNECT_USAGE_URL = 'https://connect.medalsports.us/ai/usage';
 
 export class TokenQuotaExceededError extends Error {
@@ -16,6 +17,15 @@ export class TokenQuotaExceededError extends Error {
   }
 }
 
+export type MdConnectAppBalance = {
+  client_id: string;
+  name: string;
+  app_id: string;
+  committed: number;
+  held: number;
+  monthly_tokens: number | null;
+};
+
 export type MdConnectBalance = {
   period: string;
   monthly_tokens: number | null;
@@ -26,6 +36,7 @@ export type MdConnectBalance = {
   department_used: number;
   reset_at: string;
   help_url: string;
+  by_app: MdConnectAppBalance[];
 };
 
 function secret() {
@@ -34,8 +45,8 @@ function secret() {
   return value;
 }
 
-async function postUsage(path: 'reserve' | 'complete' | 'balance', body: Record<string, unknown>) {
-  const result = await fetch(`${USAGE_BASE}/${path}`, {
+async function postOnce(base: string, path: 'reserve' | 'complete' | 'balance', body: Record<string, unknown>) {
+  return fetch(`${base}/${path}`, {
     method: 'POST',
     redirect: 'error',
     cache: 'no-store',
@@ -44,8 +55,15 @@ async function postUsage(path: 'reserve' | 'complete' | 'balance', body: Record<
       'content-type': 'application/json',
       'x-md-connect-integration-secret': secret(),
     },
-    body: JSON.stringify({ ...body, iss: ISSUER }),
+    body: JSON.stringify({ ...body, iss: ISSUER, app: APP }),
   });
+}
+
+async function postUsage(path: 'reserve' | 'complete' | 'balance', body: Record<string, unknown>) {
+  let result = await postOnce(USAGE_BASE, path, body);
+  if (result.status === 404 && USAGE_BASE !== LEGACY_USAGE_BASE) {
+    result = await postOnce(LEGACY_USAGE_BASE, path, body);
+  }
   const data = (await result.json().catch(() => ({}))) as Record<string, unknown>;
   if (result.status === 429) {
     throw new TokenQuotaExceededError(
@@ -113,6 +131,24 @@ export async function completeUsage(input: {
   }
 }
 
+function parseByApp(value: unknown): MdConnectAppBalance[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((row) => {
+    if (!row || typeof row !== 'object') return [];
+    const item = row as Record<string, unknown>;
+    return [
+      {
+        client_id: String(item.client_id ?? ''),
+        name: String(item.name ?? ''),
+        app_id: String(item.app_id ?? ''),
+        committed: Number(item.committed ?? 0),
+        held: Number(item.held ?? 0),
+        monthly_tokens: item.monthly_tokens == null ? null : Number(item.monthly_tokens),
+      },
+    ];
+  });
+}
+
 export async function getUsageBalance(sub: string): Promise<MdConnectBalance> {
   const data = await postUsage('balance', { sub });
   return {
@@ -128,6 +164,7 @@ export async function getUsageBalance(sub: string): Promise<MdConnectBalance> {
     reset_at: String(data.reset_at ?? ''),
     help_url:
       typeof data.help_url === 'string' ? data.help_url : MD_CONNECT_USAGE_URL,
+    by_app: parseByApp(data.by_app),
   };
 }
 

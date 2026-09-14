@@ -15,6 +15,7 @@ type UsageSummary = {
   enforce: boolean;
   blocked: boolean;
   helpUrl?: string;
+  appLimit?: number | null;
 };
 
 export default function UsageMeter({
@@ -101,6 +102,11 @@ export default function UsageMeter({
                       used: formatTokens(usage.usedTokens),
                     })}
                   </p>
+                  {usage.appLimit != null ? (
+                    <p className="mt-1 text-xs text-black/60 dark:text-white/60">
+                      {t('quotaAppCap', { limit: formatTokens(usage.appLimit) })}
+                    </p>
+                  ) : null}
                   {usage.helpUrl ? (
                     <a
                       href={usage.helpUrl}

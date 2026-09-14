@@ -13,13 +13,13 @@ Auth runs from `src/proxy.ts` (Next.js 16). HTML pages skip Clerk JS so Safari c
 
 ## Token allowance
 
-Vane does not keep a separate monthly quota. Each search reserves against the same employee ledger as LibreChat (`librechat_token_policies` plus bonuses) via:
+Vane does not keep a separate monthly quota. Each search reserves against the MD Connect employee AI ledger (UTC month total, plus an optional Vane app cap) via:
 
-- `POST /api/integrations/vane/usage/reserve`
-- `POST /api/integrations/vane/usage/complete`
-- `POST /api/integrations/vane/usage/balance`
+- `POST /api/integrations/ai/usage/reserve` (`app: vane.search`)
+- `POST /api/integrations/ai/usage/complete`
+- `POST /api/integrations/ai/usage/balance`
 
-Employees view remaining tokens at `https://connect.medalsports.us/ai/usage`. Admins set limits at `/admin/ai`. Missing policy rows mean unlimited, same as LibreChat.
+The older `/api/integrations/vane/usage/*` aliases still work. Employees view remaining tokens at `https://connect.medalsports.us/ai/usage`. Admins set the employee total and optional per-app caps at `/admin/ai`. Missing policy rows mean unlimited; `0` blocks.
 
 ## Railway
 
