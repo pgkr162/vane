@@ -1,23 +1,17 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
-import { useI18n } from '@/i18n/provider';
 
 const SIGN_IN = 'https://connect.medalsports.us/sign-in';
 const ACCESS_DENIED = 'https://connect.medalsports.us/access-denied?tool=vane';
 
 export default function MdConnectGate({ children }: { children: ReactNode }) {
-  const { t } = useI18n();
-  const [state, setState] = useState<'wait' | 'guest' | 'ok'>('wait');
-  const [signInHref, setSignInHref] = useState(SIGN_IN);
+  const [allowed, setAllowed] = useState(false);
 
   useEffect(() => {
     const signIn = new URL(SIGN_IN);
-    signIn.searchParams.set('redirect_url', window.location.origin);
-    setSignInHref(signIn.toString());
-  }, []);
+    signIn.searchParams.set('redirect_url', `${window.location.origin}/`);
 
-  useEffect(() => {
     fetch('/api/md-connect/me', {
       cache: 'no-store',
       credentials: 'same-origin',
@@ -28,29 +22,21 @@ export default function MdConnectGate({ children }: { children: ReactNode }) {
           return;
         }
         if (response.status !== 200) {
-          setState('guest');
+          window.location.replace(signIn.toString());
           return;
         }
         const data = (await response.json()) as { allowed?: boolean };
-        setState(data.allowed ? 'ok' : 'guest');
+        if (!data.allowed) {
+          window.location.replace(signIn.toString());
+          return;
+        }
+        setAllowed(true);
       })
-      .catch(() => setState('guest'));
+      .catch(() => {
+        window.location.replace(signIn.toString());
+      });
   }, []);
 
-  if (state === 'ok') return children;
-
-  return (
-    <div className="grid h-full min-h-screen place-items-center bg-black">
-      {state === 'guest' ? (
-        <a
-          className="rounded-lg bg-white px-4 py-2 text-sm text-black"
-          href={signInHref}
-        >
-          {t('signIn')}
-        </a>
-      ) : (
-        <p className="text-sm text-white/50">{t('connecting')}</p>
-      )}
-    </div>
-  );
+  if (!allowed) return null;
+  return children;
 }

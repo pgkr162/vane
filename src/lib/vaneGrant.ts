@@ -35,12 +35,24 @@ export async function mintVaneLaunchToken(
   secret: string,
   payload: { sub: string; roles: string[] },
   now = Date.now(),
+  ttlMs = 10 * 60 * 1000,
 ) {
-  if (secret.length < 32 || !/^user_[A-Za-z0-9]{1,100}$/.test(payload.sub) || payload.roles.length === 0) {
+  if (
+    secret.length < 32 ||
+    !/^user_[A-Za-z0-9]{1,100}$/.test(payload.sub) ||
+    payload.roles.length === 0 ||
+    ttlMs <= 0
+  ) {
     return null;
   }
   const body = bytesToB64Url(
-    encoder.encode(JSON.stringify({ sub: payload.sub, roles: payload.roles, exp: now + 10 * 60 * 1000 })),
+    encoder.encode(
+      JSON.stringify({
+        sub: payload.sub,
+        roles: payload.roles,
+        exp: now + ttlMs,
+      }),
+    ),
   );
   return `${body}.${await hmacSign(secret, body)}`;
 }
