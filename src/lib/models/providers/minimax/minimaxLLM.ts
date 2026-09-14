@@ -25,6 +25,8 @@ class MiniMaxLLM extends OpenAILLM {
       throw new Error('No response from MiniMax');
     }
 
+    this.noteUsage(response.usage);
+
     try {
       return input.schema.parse(
         JSON.parse(

@@ -24,6 +24,8 @@ import type {
 } from 'openai/resources/responses/responses';
 import { Message } from '@/lib/types';
 import { repairJson } from '@toolsycc/json-repair';
+import { recordTokenUsage } from '@/lib/usage/store';
+import { usageFromOpenAI } from '@/lib/usage/openaiUsage';
 
 type OpenAIConfig = {
   apiKey: string;
@@ -41,6 +43,17 @@ class OpenAILLM extends BaseLLM<OpenAIConfig> {
     this.openAIClient = new OpenAI({
       apiKey: this.config.apiKey,
       baseURL: this.config.baseURL || 'https://api.openai.com/v1',
+    });
+  }
+
+  noteUsage(usage: Parameters<typeof usageFromOpenAI>[0]) {
+    const parsed = usageFromOpenAI(usage);
+    if (!parsed) return;
+    recordTokenUsage({
+      model: this.config.model,
+      promptTokens: parsed.promptTokens,
+      completionTokens: parsed.completionTokens,
+      totalTokens: parsed.totalTokens,
     });
   }
 
@@ -99,6 +112,7 @@ class OpenAILLM extends BaseLLM<OpenAIConfig> {
     });
 
     if (response.choices && response.choices.length > 0) {
+      this.noteUsage(response.usage);
       return {
         content: response.choices[0].message.content!,
         toolCalls:
@@ -134,6 +148,7 @@ class OpenAILLM extends BaseLLM<OpenAIConfig> {
         input.options?.maxTokens ?? this.config.options?.maxTokens,
     });
 
+    this.noteUsage(response.usage);
     return {
       content: response.output_text ?? '',
       toolCalls: response.output
@@ -178,12 +193,16 @@ class OpenAILLM extends BaseLLM<OpenAIConfig> {
       presence_penalty:
         input.options?.presencePenalty ?? this.config.options?.presencePenalty,
       stream: true,
+      stream_options: { include_usage: true },
     });
 
     let recievedToolCalls: { name: string; id: string; arguments: string }[] =
       [];
 
     for await (const chunk of stream) {
+      if (chunk.usage) {
+        this.noteUsage(chunk.usage);
+      }
       if (chunk.choices && chunk.choices.length > 0) {
         const toolCalls = chunk.choices[0].delta.tool_calls;
         yield {
@@ -305,6 +324,9 @@ class OpenAILLM extends BaseLLM<OpenAIConfig> {
       }
 
       if (event.type === 'response.completed') {
+        this.noteUsage(
+          event.response.usage as Parameters<typeof usageFromOpenAI>[0],
+        );
         yield {
           contentChunk: '',
           toolCallChunk: [],
@@ -336,6 +358,7 @@ class OpenAILLM extends BaseLLM<OpenAIConfig> {
     });
 
     if (response.choices && response.choices.length > 0) {
+      this.noteUsage(response.usage);
       try {
         return input.schema.parse(
           JSON.parse(

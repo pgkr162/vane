@@ -4,6 +4,7 @@ import {
   BrainCog,
   ChevronLeft,
   ExternalLink,
+  Gauge,
   Search,
   Sliders,
   ToggleRight,
@@ -18,6 +19,7 @@ import Models from './Sections/Models/Section';
 import SearchSection from './Sections/Search';
 import Select from '@/components/ui/Select';
 import Personalization from './Sections/Personalization';
+import UsageSection from './Sections/Usage';
 import { useI18n } from '@/i18n/provider';
 
 const SettingsDialogue = ({
@@ -60,6 +62,14 @@ const SettingsDialogue = ({
       icon: Search,
       component: SearchSection,
       dataAdd: 'search',
+    },
+    {
+      key: 'usage',
+      name: t('settingsUsage'),
+      description: t('settingsUsageDesc'),
+      icon: Gauge,
+      component: UsageSection,
+      dataAdd: 'usage',
     },
   ];
   const [isLoading, setIsLoading] = useState(true);
@@ -204,10 +214,14 @@ const SettingsDialogue = ({
                       </div>
                     </div>
                     <div className="flex-1 overflow-y-auto">
-                      <selectedSection.component
-                        fields={config.fields[selectedSection.dataAdd]}
-                        values={config.values[selectedSection.dataAdd]}
-                      />
+                      {selectedSection.key === 'usage' ? (
+                        <UsageSection />
+                      ) : (
+                        <selectedSection.component
+                          fields={config.fields[selectedSection.dataAdd]}
+                          values={config.values[selectedSection.dataAdd]}
+                        />
+                      )}
                     </div>
                   </div>
                 )}

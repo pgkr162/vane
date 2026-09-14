@@ -36,3 +36,21 @@ export const chats = sqliteTable('chats', {
     .$type<DBFile[]>()
     .default(sql`'[]'`),
 });
+
+export const usageEvents = sqliteTable('usage_events', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: text('userId').notNull(),
+  model: text('model').notNull(),
+  promptTokens: integer('promptTokens').notNull().default(0),
+  completionTokens: integer('completionTokens').notNull().default(0),
+  totalTokens: integer('totalTokens').notNull().default(0),
+  estimatedCents: integer('estimatedCents').notNull().default(0),
+  createdAt: text('createdAt').notNull(),
+});
+
+export const usageQuotas = sqliteTable('usage_quotas', {
+  userId: text('userId').primaryKey(),
+  monthlyTokenLimit: integer('monthlyTokenLimit').notNull().default(2000000),
+  enforce: integer('enforce').notNull().default(1),
+  updatedAt: text('updatedAt').notNull(),
+});

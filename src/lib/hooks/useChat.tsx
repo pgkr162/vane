@@ -26,6 +26,7 @@ import {
   resolveEmbeddingModel,
 } from '@/lib/search/presets';
 import { routeSearchQuery } from '@/lib/search/routeQuery';
+import { useI18n } from '@/i18n/provider';
 
 export type Section = {
   message: Message;
@@ -299,6 +300,7 @@ export const chatContext = createContext<ChatContext>({
 });
 
 export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
+  const { t } = useI18n();
   const params: { chatId: string } = useParams();
 
   const searchParams = useSearchParams();
@@ -853,6 +855,15 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
         systemInstructions: localStorage.getItem('systemInstructions'),
       }),
     });
+
+    if (res.status === 429) {
+      toast.error(t('quotaExceeded'));
+      setMessages((prev) =>
+        prev.filter((item) => item.messageId !== messageId),
+      );
+      setLoading(false);
+      return;
+    }
 
     if (!res.body) throw new Error('No response body');
 
