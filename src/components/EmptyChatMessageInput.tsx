@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import TextareaAutosize from 'react-textarea-autosize';
 import Sources from './MessageInputActions/Sources';
 import Optimization from './MessageInputActions/Optimization';
+import ChatModelSelector from './MessageInputActions/ChatModelSelector';
 import Attach from './MessageInputActions/Attach';
 import { useChat } from '@/lib/hooks/useChat';
 import { useI18n } from '@/i18n/provider';
@@ -69,6 +70,7 @@ const EmptyChatMessageInput = () => {
           <Optimization />
           <div className="flex flex-row items-center space-x-2">
             <div className="flex flex-row items-center space-x-1">
+              <ChatModelSelector />
               <Sources />
               <Attach />
             </div>

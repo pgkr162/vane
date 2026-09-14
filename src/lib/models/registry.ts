@@ -5,10 +5,11 @@ import { providers } from './providers';
 import { MinimalProvider, ModelList, ModelWithProvider } from './types';
 import BaseLLM from './base/llm';
 import configManager from '../config';
-
-const LUNA_MODEL = 'gpt-5.6-luna';
-const FLASH_MODEL = 'deepseek-flash';
-const MINIMAX_MODEL = 'MiniMax-M3';
+import {
+  FLASH_MODEL,
+  LUNA_MODEL,
+  MINIMAX_MODEL,
+} from '@/lib/search/presets';
 
 class ModelRegistry {
   activeProviders: (ConfigModelProvider & {
@@ -105,41 +106,36 @@ class ModelRegistry {
   }
 
   async resolveSearchLlms(
-    mode: 'speed' | 'balanced' | 'quality',
+    _mode: 'speed' | 'balanced' | 'quality',
     fallback: ModelWithProvider,
   ) {
+    try {
+      const requested = await this.loadChatModel(
+        fallback.providerId,
+        fallback.key,
+      );
+      if (requested) {
+        return { llm: requested, writerLlm: requested };
+      }
+    } catch {
+      // Use the typed fallbacks below.
+    }
+
     const [luna, flash, minimax] = await Promise.all([
       this.loadChatModelByType('openai', LUNA_MODEL),
       this.loadChatModelByType('deepseek', FLASH_MODEL),
       this.loadChatModelByType('minimax', MINIMAX_MODEL),
     ]);
 
-    let requested: BaseLLM<any> | null = null;
-    try {
-      requested = await this.loadChatModel(fallback.providerId, fallback.key);
-    } catch {
-      requested = null;
-    }
+    // Search depth is independent of the chat model. Honor the selected model
+    // for both research and writing; fall back if that model is missing.
+    const selected = this.firstAvailable(luna, flash, minimax);
 
-    // Speed: Flash does both. Balanced: MiniMax researches, Luna writes.
-    // Quality: Luna does both (MiniMax, then Flash, if Luna is missing).
-    const researcher =
-      mode === 'quality'
-        ? this.firstAvailable(luna, minimax, flash, requested)
-        : mode === 'balanced'
-          ? this.firstAvailable(minimax, flash, luna, requested)
-          : this.firstAvailable(flash, minimax, luna, requested);
-
-    const writer =
-      mode === 'speed'
-        ? this.firstAvailable(flash, minimax, luna, requested)
-        : this.firstAvailable(luna, minimax, flash, requested);
-
-    if (!researcher || !writer) {
+    if (!selected) {
       throw new Error('No chat model is configured');
     }
 
-    return { llm: researcher, writerLlm: writer };
+    return { llm: selected, writerLlm: selected };
   }
 
   async resolveUtilityLlm(fallback: ModelWithProvider) {
