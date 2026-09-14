@@ -2,7 +2,7 @@ import { and, desc, eq, gte, lt, sql } from 'drizzle-orm';
 import db from '@/lib/db';
 import { usageEvents, usageQuotas } from '@/lib/db/schema';
 import { estimateUsageCents } from './pricing';
-import { getUsageUserId } from './context';
+import { captureUsage, getUsageUserId } from './context';
 
 export const DEFAULT_MONTHLY_TOKEN_LIMIT = 2_000_000;
 export const DEFAULT_QUOTA_USER = '*';
@@ -48,6 +48,7 @@ export function recordTokenUsage(input: {
     Math.round(input.totalTokens || promptTokens + completionTokens),
   );
   if (totalTokens <= 0) return;
+  captureUsage(promptTokens, completionTokens);
 
   void (async () => {
     try {

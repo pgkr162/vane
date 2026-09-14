@@ -6,7 +6,13 @@ import { SearchSources } from '@/lib/agents/search/types';
 import APISearchAgent from '@/lib/agents/search/api';
 import { getVaneActor } from '@/lib/vaneActor';
 import { runWithUsageContext } from '@/lib/usage/context';
-import { QuotaExceededError, assertQuota } from '@/lib/usage/store';
+import {
+  TokenQuotaExceededError,
+  estimateSearchTokens,
+  reserveUsage,
+  settleUsage,
+  tokenQuotaResponse,
+} from '@/lib/mdConnectUsage';
 
 interface ChatRequestBody {
   optimizationMode: 'speed' | 'balanced' | 'quality';
@@ -25,22 +31,6 @@ export const POST = async (req: Request) => {
     if (!actor) {
       return Response.json({ message: 'Unauthorized.' }, { status: 401 });
     }
-    try {
-      await assertQuota(actor.sub);
-    } catch (err) {
-      if (err instanceof QuotaExceededError) {
-        return Response.json(
-          {
-            message: 'TOKEN_QUOTA_EXCEEDED',
-            used: err.used,
-            limit: err.limit,
-          },
-          { status: 429 },
-        );
-      }
-      throw err;
-    }
-
     const body: ChatRequestBody = await req.json();
 
     if (!body.sources || !body.query) {
@@ -70,11 +60,34 @@ export const POST = async (req: Request) => {
         : { role: 'assistant', content: msg[1] };
     });
 
+    const nonce = crypto.randomUUID();
+    const sink = { promptTokens: 0, completionTokens: 0 };
+    await reserveUsage({
+      sub: actor.sub,
+      nonce,
+      estimatedTokens: estimateSearchTokens(body.optimizationMode),
+      model: body.chatModel?.key,
+    });
+    let settled = false;
+    const settle = (
+      outcome: 'success' | 'cancelled' | 'provider_unavailable',
+    ) => {
+      if (settled) return;
+      settled = true;
+      void settleUsage({
+        sub: actor.sub,
+        nonce,
+        outcome,
+        promptTokens: sink.promptTokens,
+        completionTokens: sink.completionTokens,
+      });
+    };
+
     const session = SessionManager.createSession();
 
     const agent = new APISearchAgent();
 
-    runWithUsageContext(actor.sub, () => {
+    runWithUsageContext({ userId: actor.sub, nonce, sink }, () => {
       agent.searchAsync(session, {
         chatHistory: history,
         config: {
@@ -120,10 +133,12 @@ export const POST = async (req: Request) => {
             }
 
             if (event === 'end') {
+              settle('success');
               resolve(Response.json({ message, sources }, { status: 200 }));
             }
 
             if (event === 'error') {
+              settle('provider_unavailable');
               reject(
                 Response.json(
                   { message: 'Search error', error: data },
@@ -155,6 +170,7 @@ export const POST = async (req: Request) => {
         );
 
         signal.addEventListener('abort', () => {
+          settle('cancelled');
           session.removeAllListeners();
 
           try {
@@ -194,6 +210,7 @@ export const POST = async (req: Request) => {
 
           if (event === 'end') {
             if (signal.aborted) return;
+            settle('success');
 
             controller.enqueue(
               encoder.encode(
@@ -207,6 +224,7 @@ export const POST = async (req: Request) => {
 
           if (event === 'error') {
             if (signal.aborted) return;
+            settle('provider_unavailable');
 
             controller.error(data);
           }
@@ -225,6 +243,9 @@ export const POST = async (req: Request) => {
       },
     });
   } catch (err: any) {
+    if (err instanceof TokenQuotaExceededError) {
+      return tokenQuotaResponse(err);
+    }
     console.error(`Error in getting search results: ${err.message}`);
     return Response.json(
       { message: 'An error has occurred.' },

@@ -11,6 +11,16 @@ Upstream Vane has no login. This overlay:
 
 Auth runs from `src/proxy.ts` (Next.js 16). HTML pages skip Clerk JS so Safari cannot handshake-bounce. MD Connect opens Vane with a short-lived `launch` token; the proxy stores it in an HttpOnly cookie and APIs accept that grant. `/api/health` is public so Railway can probe the container without Clerk keys. The image copies Playwright from the yarn lockfile instead of running `yarn add` at runtime, which was upgrading Next past 16.2.2.
 
+## Token allowance
+
+Vane does not keep a separate monthly quota. Each search reserves against the same employee ledger as LibreChat (`librechat_token_policies` plus bonuses) via:
+
+- `POST /api/integrations/vane/usage/reserve`
+- `POST /api/integrations/vane/usage/complete`
+- `POST /api/integrations/vane/usage/balance`
+
+Employees view remaining tokens at `https://connect.medalsports.us/ai/usage`. Admins set limits at `/admin/ai`. Missing policy rows mean unlimited, same as LibreChat.
+
 ## Railway
 
 - `Vane` service builds `Dockerfile.slim` from this repo.
