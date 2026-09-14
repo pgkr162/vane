@@ -121,10 +121,14 @@ class ModelRegistry {
       requested = null;
     }
 
+    // Speed: Flash does both. Balanced: MiniMax researches, Luna writes.
+    // Quality: Luna does both (MiniMax, then Flash, if Luna is missing).
     const researcher =
       mode === 'quality'
         ? this.firstAvailable(luna, minimax, flash, requested)
-        : this.firstAvailable(flash, minimax, luna, requested);
+        : mode === 'balanced'
+          ? this.firstAvailable(minimax, flash, luna, requested)
+          : this.firstAvailable(flash, minimax, luna, requested);
 
     const writer =
       mode === 'speed'
