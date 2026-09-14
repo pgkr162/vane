@@ -12,6 +12,7 @@ import {
 import jsPDF from 'jspdf';
 import { useChat, Section } from '@/lib/hooks/useChat';
 import { SourceBlock } from '@/lib/types';
+import { useI18n } from '@/i18n/provider';
 
 const downloadFile = (filename: string, content: string, type: string) => {
   const blob = new Blob([content], { type });
@@ -199,6 +200,7 @@ const exportAsPDF = (sections: Section[], title: string) => {
 const Navbar = () => {
   const [title, setTitle] = useState<string>('');
   const [timeAgo, setTimeAgo] = useState<string>('');
+  const { t, locale } = useI18n();
 
   const { sections, chatId } = useChat();
 
@@ -207,16 +209,17 @@ const Navbar = () => {
       const newTitle =
         sections[0].message.query.length > 30
           ? `${sections[0].message.query.substring(0, 30).trim()}...`
-          : sections[0].message.query || 'New Conversation';
+          : sections[0].message.query || t('newConversation');
 
       setTitle(newTitle);
       const newTimeAgo = formatTimeDifference(
         new Date(),
         sections[0].message.createdAt,
+        locale,
       );
       setTimeAgo(newTimeAgo);
     }
-  }, [sections]);
+  }, [sections, locale, t]);
 
   useEffect(() => {
     const intervalId = setInterval(() => {
@@ -224,14 +227,14 @@ const Navbar = () => {
         const newTimeAgo = formatTimeDifference(
           new Date(),
           sections[0].message.createdAt,
+          locale,
         );
         setTimeAgo(newTimeAgo);
       }
     }, 1000);
 
     return () => clearInterval(intervalId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [sections, locale]);
 
   return (
     <div className="sticky -mx-4 lg:mx-0 top-0 z-40 bg-light-primary/95 dark:bg-dark-primary/95 backdrop-blur-sm border-b border-light-200/50 dark:border-dark-200/30">
@@ -246,13 +249,13 @@ const Navbar = () => {
             </a>
             <div className="hidden lg:flex items-center gap-2 text-black/50 dark:text-white/50 min-w-0">
               <Clock size={14} />
-              <span className="text-xs whitespace-nowrap">{timeAgo} ago</span>
+              <span className="text-xs whitespace-nowrap">{timeAgo}</span>
             </div>
           </div>
 
           <div className="flex-1 mx-4 min-w-0">
             <h1 className="text-center text-sm font-medium text-black/80 dark:text-white/90 truncate">
-              {title || 'New Conversation'}
+              {title || t('newConversation')}
             </h1>
           </div>
 
@@ -274,7 +277,7 @@ const Navbar = () => {
                   <div className="p-3">
                     <div className="mb-2">
                       <p className="text-xs font-medium text-black/40 dark:text-white/40 uppercase tracking-wide">
-                        Export Chat
+                        {t('exportChat')}
                       </p>
                     </div>
                     <div className="space-y-1">
@@ -285,10 +288,10 @@ const Navbar = () => {
                         <FileText size={16} className="text-[#24A0ED]" />
                         <div>
                           <p className="text-sm font-medium text-black dark:text-white">
-                            Markdown
+                            {t('markdown')}
                           </p>
                           <p className="text-xs text-black/50 dark:text-white/50">
-                            .md format
+                            {t('mdFormat')}
                           </p>
                         </div>
                       </button>
@@ -299,10 +302,10 @@ const Navbar = () => {
                         <FileDown size={16} className="text-[#24A0ED]" />
                         <div>
                           <p className="text-sm font-medium text-black dark:text-white">
-                            PDF
+                            {t('pdf')}
                           </p>
                           <p className="text-xs text-black/50 dark:text-white/50">
-                            Document format
+                            {t('documentFormat')}
                           </p>
                         </div>
                       </button>

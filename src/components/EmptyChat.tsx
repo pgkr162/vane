@@ -1,19 +1,19 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Settings } from 'lucide-react';
 import EmptyChatMessageInput from './EmptyChatMessageInput';
-import { File } from './ChatWindow';
-import Link from 'next/link';
 import WeatherWidget from './WeatherWidget';
 import NewsArticleWidget from './NewsArticleWidget';
 import SettingsButtonMobile from '@/components/Settings/SettingsButtonMobile';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
+import { useI18n } from '@/i18n/provider';
 import {
   getShowNewsWidget,
   getShowWeatherWidget,
 } from '@/lib/config/clientRegistry';
 
 const EmptyChat = () => {
+  const { t } = useI18n();
   const [showWeather, setShowWeather] = useState(() =>
     typeof window !== 'undefined' ? getShowWeatherWidget() : true,
   );
@@ -43,13 +43,14 @@ const EmptyChat = () => {
 
   return (
     <div className="relative">
-      <div className="absolute w-full flex flex-row items-center justify-end mr-5 mt-5">
+      <div className="absolute w-full flex flex-row items-center justify-end gap-3 mr-5 mt-5 px-5">
+        <LanguageSwitcher />
         <SettingsButtonMobile />
       </div>
       <div className="flex flex-col items-center justify-center min-h-screen max-w-screen-sm mx-auto p-2 space-y-4">
         <div className="flex flex-col items-center justify-center w-full space-y-8">
           <h2 className="text-black/70 dark:text-white/70 text-3xl font-medium -mt-8">
-            Research begins here.
+            {t('researchBegins')}
           </h2>
           <EmptyChatMessageInput />
         </div>

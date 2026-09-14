@@ -12,6 +12,7 @@ import SetupWizard from '@/components/Setup/SetupWizard';
 import { ChatProvider } from '@/lib/hooks/useChat';
 import MdConnectGate from '@/components/MdConnectGate';
 import MdConnectProvider from '@/components/MdConnectProvider';
+import { LocaleProvider } from '@/i18n/provider';
 
 const montserrat = Montserrat({
   weight: ['300', '400', '500', '700'],
@@ -34,30 +35,32 @@ export default function RootLayout({
   const configSections = configManager.getUIConfigSections();
 
   return (
-    <html className="h-full" lang="en" suppressHydrationWarning>
+    <html className="h-full" lang="zh-Hant" suppressHydrationWarning>
       <body className={cn('h-full antialiased', montserrat.className)}>
-        <MdConnectProvider>
-          <MdConnectGate>
-            <ThemeProvider>
-              {setupComplete ? (
-                <ChatProvider>
-                  <Sidebar>{children}</Sidebar>
-                  <Toaster
-                    toastOptions={{
-                      unstyled: true,
-                      classNames: {
-                        toast:
-                          'bg-light-secondary dark:bg-dark-secondary dark:text-white/70 text-black-70 rounded-lg p-4 flex flex-row items-center space-x-2',
-                      },
-                    }}
-                  />
-                </ChatProvider>
-              ) : (
-                <SetupWizard configSections={configSections} />
-              )}
-            </ThemeProvider>
-          </MdConnectGate>
-        </MdConnectProvider>
+        <LocaleProvider>
+          <MdConnectProvider>
+            <MdConnectGate>
+              <ThemeProvider>
+                {setupComplete ? (
+                  <ChatProvider>
+                    <Sidebar>{children}</Sidebar>
+                    <Toaster
+                      toastOptions={{
+                        unstyled: true,
+                        classNames: {
+                          toast:
+                            'bg-light-secondary dark:bg-dark-secondary dark:text-white/70 text-black-70 rounded-lg p-4 flex flex-row items-center space-x-2',
+                        },
+                      }}
+                    />
+                  </ChatProvider>
+                ) : (
+                  <SetupWizard configSections={configSections} />
+                )}
+              </ThemeProvider>
+            </MdConnectGate>
+          </MdConnectProvider>
+        </LocaleProvider>
       </body>
     </html>
   );

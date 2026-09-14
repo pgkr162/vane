@@ -26,6 +26,7 @@ import AssistantSteps from './AssistantSteps';
 import { ResearchBlock } from '@/lib/types';
 import Renderer from './Widgets/Renderer';
 import CodeBlock from './MessageRenderer/CodeBlock';
+import { useI18n } from '@/i18n/provider';
 
 const ThinkTagProcessor = ({
   children,
@@ -58,6 +59,7 @@ const MessageBox = ({
     researchEnded,
     chatHistory,
   } = useChat();
+  const { t } = useI18n();
 
   const parsedMessage = section.parsedTextBlocks.join('\n\n');
   const speechMessage = section.speechMessage || '';
@@ -121,7 +123,7 @@ const MessageBox = ({
               <div className="flex flex-row items-center space-x-2">
                 <BookCopy className="text-black dark:text-white" size={20} />
                 <h3 className="text-black dark:text-white font-medium text-xl">
-                  Sources
+                  {t('sources')}
                 </h3>
               </div>
               <MessageSources sources={sources} />

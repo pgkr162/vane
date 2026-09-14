@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Lightbox from 'yet-another-react-lightbox';
 import 'yet-another-react-lightbox/styles.css';
 import { Message } from './ChatWindow';
+import { useI18n } from '@/i18n/provider';
 
 type Image = {
   url: string;
@@ -24,6 +25,7 @@ const SearchImages = ({
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [slides, setSlides] = useState<any[]>([]);
+  const { t } = useI18n();
 
   return (
     <>
@@ -70,7 +72,7 @@ const SearchImages = ({
         >
           <div className="flex flex-row items-center space-x-2">
             <ImagesIcon size={17} />
-            <p>Search images</p>
+            <p>{t('searchImages')}</p>
           </div>
           <PlusIcon className="text-[#24A0ED]" size={17} />
         </button>

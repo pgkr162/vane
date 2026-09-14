@@ -18,41 +18,7 @@ import Models from './Sections/Models/Section';
 import SearchSection from './Sections/Search';
 import Select from '@/components/ui/Select';
 import Personalization from './Sections/Personalization';
-
-const sections = [
-  {
-    key: 'preferences',
-    name: 'Preferences',
-    description: 'Customize your application preferences.',
-    icon: Sliders,
-    component: Preferences,
-    dataAdd: 'preferences',
-  },
-  {
-    key: 'personalization',
-    name: 'Personalization',
-    description: 'Customize the behavior and tone of the model.',
-    icon: ToggleRight,
-    component: Personalization,
-    dataAdd: 'personalization',
-  },
-  {
-    key: 'models',
-    name: 'Models',
-    description: 'Connect to AI services and manage connections.',
-    icon: BrainCog,
-    component: Models,
-    dataAdd: 'modelProviders',
-  },
-  {
-    key: 'search',
-    name: 'Search',
-    description: 'Manage search settings.',
-    icon: Search,
-    component: SearchSection,
-    dataAdd: 'search',
-  },
-];
+import { useI18n } from '@/i18n/provider';
 
 const SettingsDialogue = ({
   isOpen,
@@ -61,6 +27,41 @@ const SettingsDialogue = ({
   isOpen: boolean;
   setIsOpen: (active: boolean) => void;
 }) => {
+  const { t } = useI18n();
+  const sections = [
+    {
+      key: 'preferences',
+      name: t('settingsPreferences'),
+      description: t('settingsPreferencesDesc'),
+      icon: Sliders,
+      component: Preferences,
+      dataAdd: 'preferences',
+    },
+    {
+      key: 'personalization',
+      name: t('settingsPersonalization'),
+      description: t('settingsPersonalizationDesc'),
+      icon: ToggleRight,
+      component: Personalization,
+      dataAdd: 'personalization',
+    },
+    {
+      key: 'models',
+      name: t('settingsModels'),
+      description: t('settingsModelsDesc'),
+      icon: BrainCog,
+      component: Models,
+      dataAdd: 'modelProviders',
+    },
+    {
+      key: 'search',
+      name: t('settingsSearch'),
+      description: t('settingsSearchDesc'),
+      icon: Search,
+      component: SearchSection,
+      dataAdd: 'search',
+    },
+  ];
   const [isLoading, setIsLoading] = useState(true);
   const [config, setConfig] = useState<any>(null);
   const [activeSection, setActiveSection] = useState<string>(sections[0].key);
@@ -68,7 +69,7 @@ const SettingsDialogue = ({
 
   useEffect(() => {
     setSelectedSection(sections.find((s) => s.key === activeSection)!);
-  }, [activeSection]);
+  }, [activeSection, t]);
 
   useEffect(() => {
     if (isOpen) {
@@ -86,7 +87,7 @@ const SettingsDialogue = ({
           setConfig(data);
         } catch (error) {
           console.error('Error fetching config:', error);
-          toast.error('Failed to load configuration.');
+          toast.error(t('configLoadFailed'));
         } finally {
           setIsLoading(false);
         }
@@ -127,7 +128,7 @@ const SettingsDialogue = ({
                       className="text-black/50 dark:text-white/50 group-hover:text-black/70 group-hover:dark:text-white/70"
                     />
                     <p className="text-black/50 dark:text-white/50 group-hover:text-black/70 group-hover:dark:text-white/70 text-[14px]">
-                      Back
+                      {t('back')}
                     </p>
                   </button>
 

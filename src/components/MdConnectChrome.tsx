@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 
 import SettingsButton from './Settings/SettingsButton';
+import LanguageSwitcher from './LanguageSwitcher';
 
 const HOME = 'https://connect.medalsports.us/home';
 
@@ -18,6 +19,7 @@ export default function MdConnectChrome() {
 
   return (
     <div className="flex flex-col items-center gap-3">
+      <LanguageSwitcher compact />
       {canConfigure ? <SettingsButton /> : null}
       <a
         href={HOME}

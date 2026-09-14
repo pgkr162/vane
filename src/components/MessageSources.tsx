@@ -9,9 +9,11 @@ import {
 import { File } from 'lucide-react';
 import { Fragment, useState } from 'react';
 import { Chunk } from '@/lib/types';
+import { useI18n } from '@/i18n/provider';
 
 const MessageSources = ({ sources }: { sources: Chunk[] }) => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { t } = useI18n();
 
   const closeModal = () => {
     setIsDialogOpen(false);
@@ -109,7 +111,7 @@ const MessageSources = ({ sources }: { sources: Chunk[] }) => {
               >
                 <DialogPanel className="w-full max-w-md transform rounded-2xl bg-light-secondary dark:bg-dark-secondary border border-light-200 dark:border-dark-200 p-6 text-left align-middle shadow-xl transition-all">
                   <DialogTitle className="text-lg font-medium leading-6 dark:text-white">
-                    Sources
+                    {t('sources')}
                   </DialogTitle>
                   <div className="grid grid-cols-2 gap-2 overflow-auto max-h-[300px] mt-2 pr-2">
                     {sources.map((source, i) => (

@@ -5,6 +5,8 @@ import { formatTimeDifference } from '@/lib/utils';
 import { BookOpenText, ClockIcon, FileText, Globe2Icon } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useI18n } from '@/i18n/provider';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 export interface Chat {
   id: string;
@@ -17,6 +19,7 @@ export interface Chat {
 const Page = () => {
   const [chats, setChats] = useState<Chat[]>([]);
   const [loading, setLoading] = useState(true);
+  const { t, locale } = useI18n();
 
   useEffect(() => {
     const fetchChats = async () => {
@@ -49,20 +52,24 @@ const Page = () => {
                 className="text-5xl font-normal p-2 pb-0"
                 style={{ fontFamily: 'PP Editorial, serif' }}
               >
-                Library
+                {t('library')}
               </h1>
               <div className="px-2 text-sm text-black/60 dark:text-white/60 text-center lg:text-left">
-                Past chats, sources, and uploads.
+                {t('librarySubtitle')}
               </div>
             </div>
           </div>
 
           <div className="flex items-center justify-center lg:justify-end gap-2 text-xs text-black/60 dark:text-white/60">
+            <LanguageSwitcher />
             <span className="inline-flex items-center gap-1 rounded-full border border-black/20 dark:border-white/20 px-2 py-0.5">
               <BookOpenText size={14} />
               {loading
-                ? 'Loading…'
-                : `${chats.length} ${chats.length === 1 ? 'chat' : 'chats'}`}
+                ? t('loading')
+                : t('chatsCount', {
+                    count: chats.length,
+                    unit: chats.length === 1 ? t('chat') : t('chats'),
+                  })}
             </span>
           </div>
         </div>
@@ -93,13 +100,13 @@ const Page = () => {
             <BookOpenText className="text-black/70 dark:text-white/70" />
           </div>
           <p className="mt-2 text-black/70 dark:text-white/70 text-sm">
-            No chats found.
+            {t('noChats')}
           </p>
           <p className="mt-1 text-black/70 dark:text-white/70 text-sm">
             <Link href="/" className="text-sky-400">
-              Start a new chat
+              {t('startNewChat')}
             </Link>{' '}
-            to see it listed here.
+            {t('listedHere')}
           </p>
         </div>
       ) : (
@@ -148,7 +155,7 @@ const Page = () => {
                   <div className="flex flex-wrap items-center gap-2 text-black/70 dark:text-white/70">
                     <span className="inline-flex items-center gap-1 text-xs">
                       <ClockIcon size={14} />
-                      {formatTimeDifference(new Date(), chat.createdAt)} Ago
+                      {formatTimeDifference(new Date(), chat.createdAt, locale)}
                     </span>
 
                     {sourcesLabel && (

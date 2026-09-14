@@ -11,27 +11,29 @@ import {
   NetworkIcon,
 } from '@phosphor-icons/react';
 import { AnimatePresence, motion } from 'motion/react';
-
-const sourcesList = [
-  {
-    name: 'Web',
-    key: 'web',
-    icon: <GlobeIcon className="h-[16px] w-auto" />,
-  },
-  {
-    name: 'Academic',
-    key: 'academic',
-    icon: <GraduationCapIcon className="h-[16px] w-auto" />,
-  },
-  {
-    name: 'Social',
-    key: 'discussions',
-    icon: <NetworkIcon className="h-[16px] w-auto" />,
-  },
-];
+import { useI18n } from '@/i18n/provider';
 
 const Sources = () => {
   const { sources, setSources } = useChat();
+  const { t } = useI18n();
+
+  const sourcesList = [
+    {
+      name: t('sourceWeb'),
+      key: 'web',
+      icon: <GlobeIcon className="h-[16px] w-auto" />,
+    },
+    {
+      name: t('sourceAcademic'),
+      key: 'academic',
+      icon: <GraduationCapIcon className="h-[16px] w-auto" />,
+    },
+    {
+      name: t('sourceSocial'),
+      key: 'discussions',
+      icon: <NetworkIcon className="h-[16px] w-auto" />,
+    },
+  ];
 
   return (
     <Popover className="relative">
