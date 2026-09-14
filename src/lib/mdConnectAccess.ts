@@ -1,3 +1,5 @@
+import { mdConnectIntegrationSecret } from '@/lib/mdConnectSecret';
+
 const ISSUER = process.env.MD_CONNECT_ISSUER ?? 'https://clerk.connect.medalsports.us';
 const ENDPOINT =
   process.env.MD_CONNECT_ACCESS_URL ??
@@ -20,7 +22,7 @@ export function canConfigureVane(roles: string[]) {
 }
 
 export async function assertMdConnectAccess(sub: string): Promise<MdConnectGrant> {
-  const secret = process.env.MD_CONNECT_INTEGRATION_SECRET;
+  const secret = mdConnectIntegrationSecret();
   if (!secret || secret.length < 32 || !/^user_[A-Za-z0-9]{1,100}$/.test(sub)) {
     throw new Error('MD_CONNECT_ACCESS_DENIED');
   }

@@ -10,9 +10,13 @@ type UsagePayload = {
   usedTokens: number;
   monthlyTokenLimit: number | null;
   remainingTokens: number | null;
+  remaining?: number | null;
+  held?: number;
   helpUrl: string;
+  help_url?: string;
   managedByConnect?: boolean;
   appLimit?: number | null;
+  by_app?: { client_id: string; name: string; committed: number; held: number; monthly_tokens: number | null }[];
 };
 
 const UsageSection = () => {
@@ -38,7 +42,8 @@ const UsageSection = () => {
   }
 
   const unlimited = usage.monthlyTokenLimit == null;
-  const helpUrl = usage.helpUrl || 'https://connect.medalsports.us/ai/usage';
+  const helpUrl = usage.helpUrl || usage.help_url || 'https://connect.medalsports.us/ai/usage';
+  const remaining = usage.remainingTokens ?? usage.remaining ?? 0;
 
   return (
     <div className="flex-1 space-y-6 overflow-y-auto px-6 py-6">
@@ -50,7 +55,7 @@ const UsageSection = () => {
           {unlimited
             ? t('quotaUnlimited')
             : t('quotaRemaining', {
-                remaining: formatTokens(usage.remainingTokens ?? 0),
+                remaining: formatTokens(remaining),
                 limit: formatTokens(usage.monthlyTokenLimit ?? 0),
               })}
         </p>
@@ -60,6 +65,11 @@ const UsageSection = () => {
         {usage.appLimit != null ? (
           <p className="mt-1 text-sm text-black/60 dark:text-white/60">
             {t('quotaAppCap', { limit: formatTokens(usage.appLimit) })}
+          </p>
+        ) : null}
+        {Number(usage.held) > 0 ? (
+          <p className="mt-1 text-sm text-black/60 dark:text-white/60">
+            {t('quotaHeld', { held: formatTokens(usage.held ?? 0) })}
           </p>
         ) : null}
       </div>

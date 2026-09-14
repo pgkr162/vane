@@ -3,12 +3,13 @@ import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
 import { assertMdConnectAccess, canConfigureVane } from '@/lib/mdConnectAccess';
+import { mdConnectIntegrationSecret } from '@/lib/mdConnectSecret';
 import { readVaneLaunchToken } from '@/lib/vaneGrant';
 
 export async function requireVaneAdmin() {
   const token = (await cookies()).get('vane_grant')?.value;
   const cookieGrant = token
-    ? await readVaneLaunchToken(process.env.MD_CONNECT_INTEGRATION_SECRET || '', token)
+    ? await readVaneLaunchToken(mdConnectIntegrationSecret(), token)
     : null;
   if (cookieGrant) {
     if (!canConfigureVane(cookieGrant.roles)) {

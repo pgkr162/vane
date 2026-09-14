@@ -6,6 +6,7 @@ import {
   canConfigureVane,
   canLaunchVane,
 } from '@/lib/mdConnectAccess';
+import { mdConnectIntegrationSecret } from '@/lib/mdConnectSecret';
 import { readVaneLaunchToken } from '@/lib/vaneGrant';
 
 export type VaneActor = {
@@ -18,7 +19,7 @@ export async function getVaneActor(): Promise<VaneActor | null> {
   const token = (await cookies()).get('vane_grant')?.value;
   if (token) {
     const grant = await readVaneLaunchToken(
-      process.env.MD_CONNECT_INTEGRATION_SECRET || '',
+      mdConnectIntegrationSecret(),
       token,
     );
     if (grant && canLaunchVane(grant.roles)) {

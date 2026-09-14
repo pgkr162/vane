@@ -1,6 +1,7 @@
+import { mdConnectIntegrationSecret } from '@/lib/mdConnectSecret';
+
 const ISSUER = process.env.MD_CONNECT_ISSUER ?? 'https://clerk.connect.medalsports.us';
 const DEFAULT_USAGE_BASE = 'https://connect.medalsports.us/api/integrations/ai/usage';
-const LEGACY_USAGE_BASE = 'https://connect.medalsports.us/api/integrations/vane/usage';
 const USAGE_BASE = process.env.MD_CONNECT_USAGE_URL ?? DEFAULT_USAGE_BASE;
 const APP = 'vane.search';
 export const MD_CONNECT_USAGE_URL = 'https://connect.medalsports.us/ai/usage';
@@ -40,7 +41,7 @@ export type MdConnectBalance = {
 };
 
 function secret() {
-  const value = process.env.MD_CONNECT_INTEGRATION_SECRET;
+  const value = mdConnectIntegrationSecret();
   if (!value || value.length < 32) throw new Error('MD_CONNECT_USAGE_UNAVAILABLE');
   return value;
 }
@@ -60,10 +61,7 @@ async function postOnce(base: string, path: 'reserve' | 'complete' | 'balance', 
 }
 
 async function postUsage(path: 'reserve' | 'complete' | 'balance', body: Record<string, unknown>) {
-  let result = await postOnce(USAGE_BASE, path, body);
-  if (result.status === 404 && USAGE_BASE !== LEGACY_USAGE_BASE) {
-    result = await postOnce(LEGACY_USAGE_BASE, path, body);
-  }
+  const result = await postOnce(USAGE_BASE, path, body);
   const data = (await result.json().catch(() => ({}))) as Record<string, unknown>;
   if (result.status === 429) {
     throw new TokenQuotaExceededError(
