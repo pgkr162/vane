@@ -2,9 +2,15 @@ import { clerkMiddleware } from '@clerk/nextjs/server';
 import { NextResponse, type NextRequest } from 'next/server';
 
 import { assertMdConnectAccess } from '@/lib/mdConnectAccess';
-import { readVaneLaunchToken, type VaneLaunchPayload } from '@/lib/vaneGrant';
+import {
+  mintVaneLaunchToken,
+  readVaneLaunchToken,
+  type VaneLaunchPayload,
+} from '@/lib/vaneGrant';
 
 const GRANT_COOKIE = 'vane_grant';
+const SESSION_TTL_MS = 60 * 60 * 12 * 1000;
+const CONNECT_SIGN_IN = 'https://connect.medalsports.us/sign-in';
 
 function isHealth(pathname: string) {
   return pathname === '/api/health';
@@ -69,20 +75,35 @@ async function grantFromRequest(req: NextRequest) {
   return readVaneLaunchToken(secret(), token);
 }
 
+function connectSignIn(req: NextRequest) {
+  const configured = process.env.VANE_PUBLIC_URL || `${req.nextUrl.origin}/`;
+  const redirectUrl = configured.endsWith('/') ? configured : `${configured}/`;
+  const url = new URL(CONNECT_SIGN_IN);
+  url.searchParams.set('redirect_url', redirectUrl);
+  return NextResponse.redirect(url);
+}
+
 async function redeemLaunch(req: NextRequest) {
   const token = req.nextUrl.searchParams.get('launch');
   if (!token) return null;
   const payload = await readVaneLaunchToken(secret(), token);
-  if (!payload) return NextResponse.next();
+  if (!payload) return null;
+  const session = await mintVaneLaunchToken(
+    secret(),
+    { sub: payload.sub, roles: payload.roles },
+    Date.now(),
+    SESSION_TTL_MS,
+  );
+  if (!session) return null;
   const url = req.nextUrl.clone();
   url.searchParams.delete('launch');
   const response = NextResponse.redirect(url, 303);
-  response.cookies.set(GRANT_COOKIE, token, {
+  response.cookies.set(GRANT_COOKIE, session, {
     httpOnly: true,
     secure: true,
     sameSite: 'lax',
     path: '/',
-    maxAge: 60 * 60 * 12,
+    maxAge: SESSION_TTL_MS / 1000,
   });
   return response;
 }
@@ -121,7 +142,7 @@ export default async function proxy(...args: Parameters<typeof clerk>) {
 
   const grant = await grantFromRequest(request);
   if (grant) return withGrantHeaders(request, grant);
-  if (!needsClerk(pathname)) return NextResponse.next();
+  if (!needsClerk(pathname)) return connectSignIn(request);
   return clerk(...args);
 }
 
