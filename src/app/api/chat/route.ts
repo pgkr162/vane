@@ -127,8 +127,8 @@ export const POST = async (req: Request) => {
 
     const registry = new ModelRegistry();
 
-    const [llm, embedding] = await Promise.all([
-      registry.loadChatModel(body.chatModel.providerId, body.chatModel.key),
+    const [{ llm, writerLlm }, embedding] = await Promise.all([
+      registry.resolveSearchLlms(body.optimizationMode, body.chatModel),
       registry.loadEmbeddingModel(
         body.embeddingModel.providerId,
         body.embeddingModel.key,
@@ -217,6 +217,7 @@ export const POST = async (req: Request) => {
       messageId: body.message.messageId,
       config: {
         llm,
+        writerLlm,
         embedding: embedding,
         sources: body.sources as SearchSources[],
         mode: body.optimizationMode,

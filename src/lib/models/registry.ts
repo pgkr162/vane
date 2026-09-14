@@ -2,8 +2,12 @@ import { ConfigModelProvider } from '../config/types';
 import BaseModelProvider, { createProviderInstance } from './base/provider';
 import { getConfiguredModelProviders } from '../config/serverRegistry';
 import { providers } from './providers';
-import { MinimalProvider, ModelList } from './types';
+import { MinimalProvider, ModelList, ModelWithProvider } from './types';
+import BaseLLM from './base/llm';
 import configManager from '../config';
+
+const LUNA_MODEL = 'gpt-5.6-luna';
+const FLASH_MODEL = 'deepseek-flash';
 
 class ModelRegistry {
   activeProviders: (ConfigModelProvider & {
@@ -79,6 +83,64 @@ class ModelRegistry {
     const model = await provider.provider.loadChatModel(modelName);
 
     return model;
+  }
+
+  private async loadChatModelByType(type: string, modelKey: string) {
+    const provider = this.activeProviders.find((p) => p.type === type);
+    if (!provider) return null;
+
+    try {
+      return await provider.provider.loadChatModel(modelKey);
+    } catch (err) {
+      console.error(`Failed to load ${type}/${modelKey}:`, err);
+      return null;
+    }
+  }
+
+  private firstAvailable(
+    ...models: Array<BaseLLM<any> | null>
+  ): BaseLLM<any> | null {
+    return models.find((model) => model != null) ?? null;
+  }
+
+  async resolveSearchLlms(
+    mode: 'speed' | 'balanced' | 'quality',
+    fallback: ModelWithProvider,
+  ) {
+    const [luna, flash] = await Promise.all([
+      this.loadChatModelByType('openai', LUNA_MODEL),
+      this.loadChatModelByType('deepseek', FLASH_MODEL),
+    ]);
+
+    let requested: BaseLLM<any> | null = null;
+    try {
+      requested = await this.loadChatModel(fallback.providerId, fallback.key);
+    } catch {
+      requested = null;
+    }
+
+    const researcher =
+      mode === 'quality'
+        ? this.firstAvailable(luna, flash, requested)
+        : this.firstAvailable(flash, luna, requested);
+
+    const writer =
+      mode === 'speed'
+        ? this.firstAvailable(flash, luna, requested)
+        : this.firstAvailable(luna, flash, requested);
+
+    if (!researcher || !writer) {
+      throw new Error('No chat model is configured');
+    }
+
+    return { llm: researcher, writerLlm: writer };
+  }
+
+  async resolveUtilityLlm(fallback: ModelWithProvider) {
+    const flash = await this.loadChatModelByType('deepseek', FLASH_MODEL);
+    if (flash) return flash;
+
+    return this.loadChatModel(fallback.providerId, fallback.key);
   }
 
   async loadEmbeddingModel(providerId: string, modelName: string) {
