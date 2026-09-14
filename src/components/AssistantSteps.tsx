@@ -12,6 +12,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { ResearchBlock, ResearchBlockSubStep } from '@/lib/types';
 import { useChat } from '@/lib/hooks/useChat';
+import { useI18n } from '@/i18n/provider';
+import type { MessageKey } from '@/i18n/messages';
 
 const getStepIcon = (step: ResearchBlockSubStep) => {
   if (step.type === 'reasoning') {
@@ -33,23 +35,38 @@ const getStepIcon = (step: ResearchBlockSubStep) => {
 const getStepTitle = (
   step: ResearchBlockSubStep,
   isStreaming: boolean,
+  t: (key: MessageKey, vars?: Record<string, string | number>) => string,
 ): string => {
   if (step.type === 'reasoning') {
-    return isStreaming && !step.reasoning ? 'Thinking...' : 'Thinking';
+    return isStreaming && !step.reasoning
+      ? t('thinkingEllipsis')
+      : t('thinking');
   } else if (step.type === 'searching') {
     const queries = Array.isArray(step.searching) ? step.searching : [];
-    return `Searching ${queries.length} ${queries.length === 1 ? 'query' : 'queries'}`;
+    return t('searchingQueries', {
+      count: queries.length,
+      unit: queries.length === 1 ? t('query') : t('queries'),
+    });
   } else if (step.type === 'search_results') {
-    return `Found ${step.reading.length} ${step.reading.length === 1 ? 'result' : 'results'}`;
+    return t('foundResults', {
+      count: step.reading.length,
+      unit: step.reading.length === 1 ? t('result') : t('results'),
+    });
   } else if (step.type === 'reading') {
-    return `Reading ${step.reading.length} ${step.reading.length === 1 ? 'source' : 'sources'}`;
+    return t('readingSources', {
+      count: step.reading.length,
+      unit: step.reading.length === 1 ? t('source') : t('sources'),
+    });
   } else if (step.type === 'upload_searching') {
-    return 'Scanning your uploaded documents';
+    return t('scanningUploads');
   } else if (step.type === 'upload_search_results') {
-    return `Reading ${step.results.length} ${step.results.length === 1 ? 'document' : 'documents'}`;
+    return t('readingDocuments', {
+      count: step.results.length,
+      unit: step.results.length === 1 ? t('document') : t('documents'),
+    });
   }
 
-  return 'Processing';
+  return t('processing');
 };
 
 const AssistantSteps = ({
@@ -65,6 +82,7 @@ const AssistantSteps = ({
     isLast && status === 'answering' ? true : false,
   );
   const { researchEnded, loading } = useChat();
+  const { t } = useI18n();
 
   useEffect(() => {
     if (researchEnded && isLast) {
@@ -85,8 +103,10 @@ const AssistantSteps = ({
         <div className="flex items-center gap-2">
           <Brain className="w-4 h-4 text-black dark:text-white" />
           <span className="text-sm font-medium text-black dark:text-white">
-            Research Progress ({block.data.subSteps.length}{' '}
-            {block.data.subSteps.length === 1 ? 'step' : 'steps'})
+            {t('researchProgress', {
+              count: block.data.subSteps.length,
+              unit: block.data.subSteps.length === 1 ? t('step') : t('steps'),
+            })}
           </span>
         </div>
         {isExpanded ? (
@@ -131,7 +151,7 @@ const AssistantSteps = ({
 
                     <div className="flex-1 pb-1">
                       <span className="text-sm font-medium text-black dark:text-white">
-                        {getStepTitle(step, isStreaming)}
+                        {getStepTitle(step, isStreaming, t)}
                       </span>
 
                       {step.type === 'reasoning' && (

@@ -9,35 +9,37 @@ import {
 import { Fragment } from 'react';
 import { useChat } from '@/lib/hooks/useChat';
 import { AnimatePresence, motion } from 'motion/react';
-
-const OptimizationModes = [
-  {
-    key: 'speed',
-    title: 'Speed',
-    description: 'Prioritize speed and get the quickest possible answer.',
-    icon: <Zap size={16} className="text-[#FF9800]" />,
-  },
-  {
-    key: 'balanced',
-    title: 'Balanced',
-    description: 'Find the right balance between speed and accuracy',
-    icon: <Sliders size={16} className="text-[#4CAF50]" />,
-  },
-  {
-    key: 'quality',
-    title: 'Quality',
-    description: 'Get the most thorough and accurate answer',
-    icon: (
-      <Star
-        size={16}
-        className="text-[#2196F3] dark:text-[#BBDEFB] fill-[#BBDEFB] dark:fill-[#2196F3]"
-      />
-    ),
-  },
-];
+import { useI18n } from '@/i18n/provider';
 
 const Optimization = () => {
   const { optimizationMode, setOptimizationMode } = useChat();
+  const { t } = useI18n();
+
+  const OptimizationModes = [
+    {
+      key: 'speed',
+      title: t('speed'),
+      description: t('speedDesc'),
+      icon: <Zap size={16} className="text-[#FF9800]" />,
+    },
+    {
+      key: 'balanced',
+      title: t('balanced'),
+      description: t('balancedDesc'),
+      icon: <Sliders size={16} className="text-[#4CAF50]" />,
+    },
+    {
+      key: 'quality',
+      title: t('quality'),
+      description: t('qualityDesc'),
+      icon: (
+        <Star
+          size={16}
+          className="text-[#2196F3] dark:text-[#BBDEFB] fill-[#BBDEFB] dark:fill-[#2196F3]"
+        />
+      ),
+    },
+  ];
 
   return (
     <Popover className="relative w-full max-w-[15rem] md:max-w-md lg:max-w-lg">

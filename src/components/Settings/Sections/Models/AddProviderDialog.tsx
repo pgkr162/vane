@@ -15,6 +15,7 @@ import {
 } from '@/lib/config/types';
 import Select from '@/components/ui/Select';
 import { toast } from 'sonner';
+import { useI18n } from '@/i18n/provider';
 
 const AddProvider = ({
   modelProviders,
@@ -24,6 +25,7 @@ const AddProvider = ({
   setProviders: React.Dispatch<React.SetStateAction<ConfigModelProvider[]>>;
 }) => {
   const [open, setOpen] = useState(false);
+  const { t } = useI18n();
   const [selectedProvider, setSelectedProvider] = useState<null | string>(
     modelProviders[0]?.key || null,
   );
@@ -99,7 +101,7 @@ const AddProvider = ({
         className="px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs sm:text-xs border border-light-200 dark:border-dark-200 text-black dark:text-white bg-light-secondary/50 dark:bg-dark-secondary/50 hover:bg-light-secondary hover:dark:bg-dark-secondary hover:border-light-300 hover:dark:border-dark-300 flex flex-row items-center space-x-1 active:scale-95 transition duration-200"
       >
         <Plus className="w-3.5 h-3.5 md:w-4 md:h-4" />
-        <span>Add Connection</span>
+        <span>{t('addConnection')}</span>
       </button>
       <AnimatePresence>
         {open && (
@@ -199,7 +201,7 @@ const AddProvider = ({
                       {loading ? (
                         <Loader2 className="animate-spin" size={16} />
                       ) : (
-                        'Add Connection'
+                        t('addConnection')
                       )}
                     </button>
                   </div>

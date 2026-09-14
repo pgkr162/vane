@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import Lightbox, { GenericSlide, VideoSlide } from 'yet-another-react-lightbox';
 import 'yet-another-react-lightbox/styles.css';
 import { Message } from './ChatWindow';
+import { useI18n } from '@/i18n/provider';
 
 type Video = {
   url: string;
@@ -39,6 +40,7 @@ const Searchvideos = ({
   const [slides, setSlides] = useState<VideoSlide[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const videoRefs = useRef<(HTMLIFrameElement | null)[]>([]);
+  const { t } = useI18n();
 
   return (
     <>
@@ -87,7 +89,7 @@ const Searchvideos = ({
         >
           <div className="flex flex-row items-center space-x-2">
             <VideoIcon size={17} />
-            <p>Search videos</p>
+            <p>{t('searchVideos')}</p>
           </div>
           <PlusIcon className="text-[#24A0ED]" size={17} />
         </button>

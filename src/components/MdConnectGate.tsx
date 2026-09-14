@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
+import { useI18n } from '@/i18n/provider';
 
 const SIGN_IN = 'https://connect.medalsports.us/sign-in';
 const ACCESS_DENIED = 'https://connect.medalsports.us/access-denied?tool=vane';
 
 export default function MdConnectGate({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
   const [state, setState] = useState<'wait' | 'guest' | 'ok'>('wait');
   const [signInHref, setSignInHref] = useState(SIGN_IN);
 
@@ -16,7 +18,10 @@ export default function MdConnectGate({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    fetch('/api/md-connect/me', { cache: 'no-store', credentials: 'same-origin' })
+    fetch('/api/md-connect/me', {
+      cache: 'no-store',
+      credentials: 'same-origin',
+    })
       .then(async (response) => {
         if (response.status === 403) {
           window.location.replace(ACCESS_DENIED);
@@ -37,11 +42,14 @@ export default function MdConnectGate({ children }: { children: ReactNode }) {
   return (
     <div className="grid h-full min-h-screen place-items-center bg-black">
       {state === 'guest' ? (
-        <a className="rounded-lg bg-white px-4 py-2 text-sm text-black" href={signInHref}>
-          Sign in with MD Connect
+        <a
+          className="rounded-lg bg-white px-4 py-2 text-sm text-black"
+          href={signInHref}
+        >
+          {t('signIn')}
         </a>
       ) : (
-        <p className="text-sm text-white/50">Connecting…</p>
+        <p className="text-sm text-white/50">{t('connecting')}</p>
       )}
     </div>
   );

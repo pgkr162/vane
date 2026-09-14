@@ -1,26 +1,13 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import {
-  BookOpenText,
-  Home,
-  Search,
-  SquarePen,
-  Settings,
-  Plus,
-  ArrowLeft,
-} from 'lucide-react';
+import { BookOpenText, Home, Search, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useSelectedLayoutSegments } from 'next/navigation';
-import React, { useState, type ReactNode } from 'react';
+import React, { type ReactNode } from 'react';
 import Layout from './Layout';
-import {
-  Description,
-  Dialog,
-  DialogPanel,
-  DialogTitle,
-} from '@headlessui/react';
 import MdConnectChrome from './MdConnectChrome';
+import { useI18n } from '@/i18n/provider';
 
 const VerticalIconContainer = ({ children }: { children: ReactNode }) => {
   return <div className="flex flex-col items-center w-full">{children}</div>;
@@ -28,26 +15,26 @@ const VerticalIconContainer = ({ children }: { children: ReactNode }) => {
 
 const Sidebar = ({ children }: { children: React.ReactNode }) => {
   const segments = useSelectedLayoutSegments();
-  const [isOpen, setIsOpen] = useState<boolean>(true);
+  const { t } = useI18n();
 
   const navLinks = [
     {
       icon: Home,
       href: '/',
       active: segments.length === 0 || segments.includes('c'),
-      label: 'Home',
+      label: t('home'),
     },
     {
       icon: Search,
       href: '/discover',
       active: segments.includes('discover'),
-      label: 'Discover',
+      label: t('discover'),
     },
     {
       icon: BookOpenText,
       href: '/library',
       active: segments.includes('library'),
-      label: 'Library',
+      label: t('library'),
     },
   ];
 
