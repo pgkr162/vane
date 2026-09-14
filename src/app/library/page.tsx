@@ -6,7 +6,6 @@ import { BookOpenText, ClockIcon, FileText, Globe2Icon } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useI18n } from '@/i18n/provider';
-import LanguageSwitcher from '@/components/LanguageSwitcher';
 
 export interface Chat {
   id: string;
@@ -61,7 +60,6 @@ const Page = () => {
           </div>
 
           <div className="flex items-center justify-center lg:justify-end gap-2 text-xs text-black/60 dark:text-white/60">
-            <LanguageSwitcher />
             <span className="inline-flex items-center gap-1 rounded-full border border-black/20 dark:border-white/20 px-2 py-0.5">
               <BookOpenText size={14} />
               {loading

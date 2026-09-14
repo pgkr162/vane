@@ -9,6 +9,7 @@ import LemonadeProvider from './lemonade';
 import AnthropicProvider from './anthropic';
 import LMStudioProvider from './lmstudio';
 import DeepSeekProvider from './deepseek';
+import MiniMaxProvider from './minimax';
 
 export const providers: Record<string, ProviderConstructor<any>> = {
   openai: OpenAIProvider,
@@ -20,6 +21,7 @@ export const providers: Record<string, ProviderConstructor<any>> = {
   anthropic: AnthropicProvider,
   lmstudio: LMStudioProvider,
   deepseek: DeepSeekProvider,
+  minimax: MiniMaxProvider,
 };
 
 export const getModelProvidersUIConfigSection =

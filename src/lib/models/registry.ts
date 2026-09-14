@@ -8,6 +8,7 @@ import configManager from '../config';
 
 const LUNA_MODEL = 'gpt-5.6-luna';
 const FLASH_MODEL = 'deepseek-flash';
+const MINIMAX_MODEL = 'MiniMax-M3';
 
 class ModelRegistry {
   activeProviders: (ConfigModelProvider & {
@@ -107,9 +108,10 @@ class ModelRegistry {
     mode: 'speed' | 'balanced' | 'quality',
     fallback: ModelWithProvider,
   ) {
-    const [luna, flash] = await Promise.all([
+    const [luna, flash, minimax] = await Promise.all([
       this.loadChatModelByType('openai', LUNA_MODEL),
       this.loadChatModelByType('deepseek', FLASH_MODEL),
+      this.loadChatModelByType('minimax', MINIMAX_MODEL),
     ]);
 
     let requested: BaseLLM<any> | null = null;
@@ -121,13 +123,13 @@ class ModelRegistry {
 
     const researcher =
       mode === 'quality'
-        ? this.firstAvailable(luna, flash, requested)
-        : this.firstAvailable(flash, luna, requested);
+        ? this.firstAvailable(luna, minimax, flash, requested)
+        : this.firstAvailable(flash, minimax, luna, requested);
 
     const writer =
       mode === 'speed'
-        ? this.firstAvailable(flash, luna, requested)
-        : this.firstAvailable(luna, flash, requested);
+        ? this.firstAvailable(flash, minimax, luna, requested)
+        : this.firstAvailable(luna, minimax, flash, requested);
 
     if (!researcher || !writer) {
       throw new Error('No chat model is configured');
@@ -139,6 +141,9 @@ class ModelRegistry {
   async resolveUtilityLlm(fallback: ModelWithProvider) {
     const flash = await this.loadChatModelByType('deepseek', FLASH_MODEL);
     if (flash) return flash;
+
+    const minimax = await this.loadChatModelByType('minimax', MINIMAX_MODEL);
+    if (minimax) return minimax;
 
     return this.loadChatModel(fallback.providerId, fallback.key);
   }
