@@ -13,7 +13,7 @@ interface OpenAIConfig {
 }
 
 const OPENAI_CHAT_MODEL: Model = {
-  name: 'GPT-5.6 Luna',
+    name: 'GPT Luna',
   key: 'gpt-5.6-luna',
 };
 

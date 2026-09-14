@@ -13,7 +13,7 @@ interface DeepSeekConfig {
 const DEEPSEEK_BASE_URL = 'https://api.deepseek.com';
 
 const DEEPSEEK_CHAT_MODEL: Model = {
-  name: 'DeepSeek Flash',
+  name: 'DeepSeek 4.1 Flash',
   key: 'deepseek-flash',
 };
 

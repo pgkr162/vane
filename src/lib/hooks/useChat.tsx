@@ -18,6 +18,14 @@ import { MinimalProvider } from '../models/types';
 import { getAutoMediaSearch } from '../config/clientRegistry';
 import { applyPatch } from 'rfc6902';
 import { Widget } from '@/components/ChatWindow';
+import {
+  LUNA_MODEL,
+  SearchPresetKey,
+  getSearchPreset,
+  resolveChatModel,
+  resolveEmbeddingModel,
+} from '@/lib/search/presets';
+import { routeSearchQuery } from '@/lib/search/routeQuery';
 
 export type Section = {
   message: Message;
@@ -37,6 +45,7 @@ type ChatContext = {
   sources: string[];
   chatId: string | undefined;
   optimizationMode: string;
+  searchPreset: SearchPresetKey;
   isMessagesLoaded: boolean;
   loading: boolean;
   notFound: boolean;
@@ -48,6 +57,7 @@ type ChatContext = {
   researchEnded: boolean;
   setResearchEnded: (ended: boolean) => void;
   setOptimizationMode: (mode: string) => void;
+  applySearchPreset: (preset: SearchPresetKey) => void;
   setSources: (sources: string[]) => void;
   setFiles: (files: File[]) => void;
   setFileIds: (fileIds: string[]) => void;
@@ -77,19 +87,44 @@ interface EmbeddingModelProvider {
   providerId: string;
 }
 
+const isSearchPresetKey = (value: string | null): value is SearchPresetKey => {
+  return (
+    value === 'auto' ||
+    value === 'fast' ||
+    value === 'balanced' ||
+    value === 'deep' ||
+    value === 'long' ||
+    value === 'custom'
+  );
+};
+
+const persistChatModel = (model: { providerId: string; key: string }) => {
+  localStorage.setItem('chatModelProviderId', model.providerId);
+  localStorage.setItem('chatModelKey', model.key);
+};
+
+const persistEmbeddingModel = (model: { providerId: string; key: string }) => {
+  localStorage.setItem('embeddingModelProviderId', model.providerId);
+  localStorage.setItem('embeddingModelKey', model.key);
+};
+
 const checkConfig = async (
   setChatModelProvider: (provider: ChatModelProvider) => void,
   setEmbeddingModelProvider: (provider: EmbeddingModelProvider) => void,
+  setSearchPreset: (preset: SearchPresetKey) => void,
+  setOptimizationMode: (mode: string) => void,
+  setModelProviders: (providers: MinimalProvider[]) => void,
   setIsConfigReady: (ready: boolean) => void,
   setHasError: (hasError: boolean) => void,
 ) => {
   try {
-    let chatModelKey = localStorage.getItem('chatModelKey');
-    let chatModelProviderId = localStorage.getItem('chatModelProviderId');
-    let embeddingModelKey = localStorage.getItem('embeddingModelKey');
-    let embeddingModelProviderId = localStorage.getItem(
+    const storedChatKey = localStorage.getItem('chatModelKey');
+    const storedChatProviderId = localStorage.getItem('chatModelProviderId');
+    const storedEmbeddingKey = localStorage.getItem('embeddingModelKey');
+    const storedEmbeddingProviderId = localStorage.getItem(
       'embeddingModelProviderId',
     );
+    const storedPreset = localStorage.getItem('searchPreset');
 
     const res = await fetch(`/api/providers`, {
       headers: {
@@ -105,6 +140,7 @@ const checkConfig = async (
 
     const data = await res.json();
     const providers: MinimalProvider[] = data.providers;
+    setModelProviders(providers);
 
     if (providers.length === 0) {
       throw new Error(
@@ -112,56 +148,49 @@ const checkConfig = async (
       );
     }
 
-    const chatModelProvider =
-      providers.find((p) => p.id === chatModelProviderId) ??
-      providers.find((p) => p.chatModels.length > 0);
+    const embeddingModel = resolveEmbeddingModel(
+      providers,
+      storedEmbeddingKey && storedEmbeddingProviderId
+        ? { key: storedEmbeddingKey, providerId: storedEmbeddingProviderId }
+        : null,
+    );
 
-    if (!chatModelProvider) {
-      throw new Error(
-        'No chat models found, pleae configure them in the settings page.',
-      );
-    }
-
-    chatModelProviderId = chatModelProvider.id;
-
-    const chatModel =
-      chatModelProvider.chatModels.find((m) => m.key === chatModelKey) ??
-      chatModelProvider.chatModels[0];
-    chatModelKey = chatModel.key;
-
-    const embeddingModelProvider =
-      providers.find((p) => p.id === embeddingModelProviderId) ??
-      providers.find((p) => p.embeddingModels.length > 0);
-
-    if (!embeddingModelProvider) {
+    if (!embeddingModel) {
       throw new Error(
         'No embedding models found, pleae configure them in the settings page.',
       );
     }
 
-    embeddingModelProviderId = embeddingModelProvider.id;
+    const preset: SearchPresetKey = isSearchPresetKey(storedPreset)
+      ? storedPreset
+      : 'balanced';
 
-    const embeddingModel =
-      embeddingModelProvider.embeddingModels.find(
-        (m) => m.key === embeddingModelKey,
-      ) ?? embeddingModelProvider.embeddingModels[0];
-    embeddingModelKey = embeddingModel.key;
+    const presetConfig = getSearchPreset(preset);
+    const chatModel =
+      preset === 'custom' || preset === 'auto'
+        ? resolveChatModel(providers, storedChatKey ?? LUNA_MODEL)
+        : resolveChatModel(providers, presetConfig?.modelKey ?? LUNA_MODEL);
 
-    localStorage.setItem('chatModelKey', chatModelKey);
-    localStorage.setItem('chatModelProviderId', chatModelProviderId);
-    localStorage.setItem('embeddingModelKey', embeddingModelKey);
-    localStorage.setItem('embeddingModelProviderId', embeddingModelProviderId);
+    if (!chatModel) {
+      throw new Error(
+        'No chat models found, pleae configure them in the settings page.',
+      );
+    }
 
-    setChatModelProvider({
-      key: chatModelKey,
-      providerId: chatModelProviderId,
-    });
+    const optimizationMode =
+      presetConfig?.mode ??
+      localStorage.getItem('optimizationMode') ??
+      'balanced';
 
-    setEmbeddingModelProvider({
-      key: embeddingModelKey,
-      providerId: embeddingModelProviderId,
-    });
+    persistChatModel(chatModel);
+    persistEmbeddingModel(embeddingModel);
+    localStorage.setItem('searchPreset', preset);
+    localStorage.setItem('optimizationMode', optimizationMode);
 
+    setChatModelProvider(chatModel);
+    setEmbeddingModelProvider(embeddingModel);
+    setSearchPreset(preset);
+    setOptimizationMode(optimizationMode);
     setIsConfigReady(true);
   } catch (err: any) {
     console.error('An error occurred while checking the configuration:', err);
@@ -252,7 +281,8 @@ export const chatContext = createContext<ChatContext>({
   messages: [],
   sections: [],
   notFound: false,
-  optimizationMode: '',
+  optimizationMode: 'balanced',
+  searchPreset: 'balanced',
   chatModelProvider: { key: '', providerId: '' },
   embeddingModelProvider: { key: '', providerId: '' },
   researchEnded: false,
@@ -262,6 +292,7 @@ export const chatContext = createContext<ChatContext>({
   setFiles: () => {},
   setSources: () => {},
   setOptimizationMode: () => {},
+  applySearchPreset: () => {},
   setChatModelProvider: () => {},
   setEmbeddingModelProvider: () => {},
   setResearchEnded: () => {},
@@ -288,7 +319,10 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
   const [fileIds, setFileIds] = useState<string[]>([]);
 
   const [sources, setSources] = useState<string[]>(['web']);
-  const [optimizationMode, setOptimizationMode] = useState('speed');
+  const [optimizationMode, setOptimizationMode] = useState('balanced');
+  const [searchPreset, setSearchPreset] = useState<SearchPresetKey>('balanced');
+  const [modelProviders, setModelProviders] = useState<MinimalProvider[]>([]);
+  const applyingPresetRef = useRef(false);
 
   const [isMessagesLoaded, setIsMessagesLoaded] = useState(false);
 
@@ -464,6 +498,9 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     checkConfig(
       setChatModelProvider,
       setEmbeddingModelProvider,
+      setSearchPreset,
+      setOptimizationMode,
+      setModelProviders,
       setIsConfigReady,
       setHasError,
     );
@@ -711,6 +748,37 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
     };
   };
 
+  const applySearchPreset = (key: SearchPresetKey) => {
+    applyingPresetRef.current = true;
+    setSearchPreset(key);
+    localStorage.setItem('searchPreset', key);
+
+    const preset = getSearchPreset(key);
+    const mode = preset?.mode ?? 'balanced';
+    setOptimizationMode(mode);
+    localStorage.setItem('optimizationMode', mode);
+
+    const model = resolveChatModel(
+      modelProviders,
+      key === 'auto' || key === 'custom' ? LUNA_MODEL : preset?.modelKey,
+    );
+    if (model) {
+      setChatModelProvider(model);
+      persistChatModel(model);
+    }
+
+    applyingPresetRef.current = false;
+  };
+
+  const selectChatModel = (provider: ChatModelProvider) => {
+    setChatModelProvider(provider);
+    persistChatModel(provider);
+    if (!applyingPresetRef.current) {
+      setSearchPreset('custom');
+      localStorage.setItem('searchPreset', 'custom');
+    }
+  };
+
   const sendMessage: ChatContext['sendMessage'] = async (
     message,
     messageId,
@@ -742,6 +810,16 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
 
     const messageIndex = messages.findIndex((m) => m.messageId === messageId);
 
+    const routed =
+      searchPreset === 'auto'
+        ? routeSearchQuery(message, { fileCount: fileIds.length })
+        : null;
+    const requestMode = routed?.mode ?? optimizationMode;
+    const requestChatModel =
+      (routed
+        ? resolveChatModel(modelProviders, routed.modelKey)
+        : null) ?? chatModelProvider;
+
     const res = await fetch('/api/chat', {
       method: 'POST',
       headers: {
@@ -757,7 +835,7 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
         chatId: chatId!,
         files: fileIds,
         sources: sources,
-        optimizationMode: optimizationMode,
+        optimizationMode: requestMode,
         history: rewrite
           ? chatHistory.current.slice(
               0,
@@ -765,8 +843,8 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
             )
           : chatHistory.current,
         chatModel: {
-          key: chatModelProvider.key,
-          providerId: chatModelProvider.providerId,
+          key: requestChatModel.key,
+          providerId: requestChatModel.providerId,
         },
         embeddingModel: {
           key: embeddingModelProvider.key,
@@ -822,13 +900,15 @@ export const ChatProvider = ({ children }: { children: React.ReactNode }) => {
         messageAppeared,
         notFound,
         optimizationMode,
+        searchPreset,
         setFileIds,
         setFiles,
         setSources,
         setOptimizationMode,
+        applySearchPreset,
         rewrite,
         sendMessage,
-        setChatModelProvider,
+        setChatModelProvider: selectChatModel,
         chatModelProvider,
         embeddingModelProvider,
         setEmbeddingModelProvider,

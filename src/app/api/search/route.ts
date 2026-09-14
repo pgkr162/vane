@@ -28,7 +28,7 @@ export const POST = async (req: Request) => {
     }
 
     body.history = body.history || [];
-    body.optimizationMode = body.optimizationMode || 'speed';
+    body.optimizationMode = body.optimizationMode || 'balanced';
     body.stream = body.stream || false;
 
     const registry = new ModelRegistry();
