@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { useI18n } from '@/i18n/provider';
 import { formatTokens } from '@/lib/usage/format';
+import { aiAppLabel } from '@/lib/aiAppLabel';
 
 type UsagePayload = {
   period: string;
@@ -72,6 +73,15 @@ const UsageSection = () => {
             {t('quotaHeld', { held: formatTokens(usage.held ?? 0) })}
           </p>
         ) : null}
+        {usage.by_app?.filter((app) => app.client_id).map((app) => (
+          <p key={app.client_id} className="mt-1 text-sm text-black/60 dark:text-white/60">
+            {aiAppLabel(app, t)}
+            {': '}
+            {app.monthly_tokens == null
+              ? t('quotaUnlimited')
+              : formatTokens(Math.max(0, app.monthly_tokens - app.committed))}
+          </p>
+        ))}
       </div>
 
       <div className="rounded-xl border border-light-200 bg-light-primary/80 p-4 dark:border-dark-200 dark:bg-dark-primary/80">
