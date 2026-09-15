@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/i18n/provider';
 import { formatTokens } from '@/lib/usage/format';
+import { aiAppLabel } from '@/lib/aiAppLabel';
 
 type UsageSummary = {
   usedTokens: number;
@@ -117,9 +118,9 @@ export default function UsageMeter({
                       {t('quotaHeld', { held: formatTokens(usage.held ?? 0) })}
                     </p>
                   ) : null}
-                  {usage.by_app?.filter((app) => app.client_id && app.client_id !== 'vane.search').map((app) => (
+                  {usage.by_app?.filter((app) => app.client_id).map((app) => (
                     <p key={app.client_id} className="mt-1 text-xs text-black/60 dark:text-white/60">
-                      {app.name}: {app.monthly_tokens == null ? t('quotaUnlimited') : formatTokens(Math.max(0, app.monthly_tokens - app.committed))}
+                      {aiAppLabel(app, t)}: {app.monthly_tokens == null ? t('quotaUnlimited') : formatTokens(Math.max(0, app.monthly_tokens - app.committed))}
                     </p>
                   ))}
                   {usage.helpUrl || usage.help_url ? (
